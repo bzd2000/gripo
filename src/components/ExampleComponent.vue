@@ -14,7 +14,15 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { Todo, Meta } from './models';
+
+interface Todo {
+  id: number;
+  content: string;
+}
+
+interface Meta {
+  totalCount: number;
+}
 
 interface Props {
   title: string;

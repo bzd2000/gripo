@@ -1,8 +1,2 @@
-export interface Todo {
-  id: number;
-  content: string;
-}
-
-export interface Meta {
-  totalCount: number;
-}
+export type { Subject, Task, AgendaPoint, MeetingMinutes } from 'src/models/types';
+export type { SubjectType, TaskStatus, TaskPriority } from 'src/models/types';
