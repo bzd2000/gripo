@@ -24,11 +24,10 @@ export const useMinutesStore = defineStore('minutes', () => {
   }
 
   async function loadRecent(limit = 10) {
-    minutes.value = await db.meetingMinutes
+    const all = await db.meetingMinutes
       .filter((m) => !m.deleted)
-      .reverse()
       .sortBy('date');
-    minutes.value = minutes.value.slice(0, limit);
+    minutes.value = all.reverse().slice(0, limit);
   }
 
   async function createMinutes(data: {

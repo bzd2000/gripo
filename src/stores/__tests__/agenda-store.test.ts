@@ -45,6 +45,20 @@ describe('useAgendaStore', () => {
     expect(store.unresolvedPoints[0].title).toBe('Open');
   });
 
+  it('loads all unresolved across subjects', async () => {
+    const store = useAgendaStore();
+    await store.createAgendaPoint({ subjectId: 1, title: 'Open 1' });
+    await store.createAgendaPoint({ subjectId: 2, title: 'Open 2' });
+    await store.createAgendaPoint({ subjectId: 1, title: 'Resolved' });
+    // Resolve the third one
+    await store.loadForSubject(1);
+    const resolvedId = store.agendaPoints.find((a) => a.title === 'Resolved')!.id!;
+    await store.toggleResolved(resolvedId);
+    // Now load all unresolved
+    await store.loadAllUnresolved();
+    expect(store.agendaPoints).toHaveLength(2);
+  });
+
   it('soft-deletes an agenda point', async () => {
     const store = useAgendaStore();
     await store.createAgendaPoint({ subjectId: 1, title: 'Delete me' });
