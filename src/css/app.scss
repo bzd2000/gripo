@@ -1,1 +1,48 @@
-// app global css in SCSS form
+// Gripo — warm & friendly theme
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #fafafa;
+}
+
+// Rounded corners everywhere
+.q-card {
+  border-radius: 12px !important;
+}
+
+.q-btn {
+  border-radius: 8px !important;
+}
+
+.q-dialog .q-card {
+  border-radius: 12px !important;
+}
+
+// Comfortable spacing for list items
+.q-item {
+  border-radius: 8px;
+  margin: 2px 0;
+}
+
+// Tabs styling
+.q-tabs {
+  .q-tab {
+    border-radius: 8px 8px 0 0;
+  }
+}
+
+// Keyboard shortcut hint
+kbd {
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  font-family: monospace;
+}
+
+// Badge as color dot
+.q-badge {
+  min-height: 12px;
+  min-width: 12px;
+}
