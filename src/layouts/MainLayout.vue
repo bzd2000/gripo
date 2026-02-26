@@ -46,6 +46,8 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <CommandPalette ref="commandPaletteRef" />
   </q-layout>
 </template>
 
@@ -53,18 +55,20 @@
 import { ref, onMounted } from 'vue';
 import { useSubjectStore } from 'stores/subject-store';
 import { storeToRefs } from 'pinia';
+import CommandPalette from 'components/CommandPalette.vue';
 
 const subjectStore = useSubjectStore();
 const { activeSubjects } = storeToRefs(subjectStore);
 
 const leftDrawerOpen = ref(false);
+const commandPaletteRef = ref<InstanceType<typeof CommandPalette>>();
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
 }
 
 function openCommandPalette() {
-  // Will be implemented in Task 13
+  commandPaletteRef.value?.open();
 }
 
 onMounted(async () => {
