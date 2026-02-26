@@ -1,63 +1,177 @@
 <template>
   <q-page class="q-pa-md">
-    <h5 class="q-mt-none q-mb-md">Dashboard</h5>
-
-    <DashboardSection title="Today" icon="today" :items="tasksDueToday" empty-text="Nothing due today." />
-    <DashboardSection title="This Week" icon="date_range" :items="tasksDueThisWeek" empty-text="Nothing else this week." />
-    <DashboardSection title="Next Week" icon="event" :items="tasksDueNextWeek" empty-text="Nothing next week." />
-
-    <div class="q-mb-md" v-if="ongoingSubjects.length">
-      <div class="row items-center q-mb-sm">
-        <q-icon name="timelapse" class="q-mr-sm" />
-        <span class="text-weight-bold">Ongoing</span>
+    <div v-if="isEmpty" class="welcome-state">
+      <div class="welcome-icon">
+        <q-icon name="rocket_launch" />
       </div>
-      <q-card
-        v-for="subject in ongoingSubjects"
-        :key="subject.id!"
-        flat
-        bordered
-        class="q-mb-sm rounded-borders cursor-pointer"
-        @click="goToSubject(subject.id!)"
-      >
-        <q-card-section horizontal>
-          <q-badge :style="{ backgroundColor: subject.color }" rounded class="q-ml-md self-center" />
-          <q-card-section>
-            <div class="text-subtitle2">{{ subject.name }}</div>
-            <div class="text-caption text-grey" v-if="subject.startDate && subject.endDate">
-              {{ formatDate(subject.startDate) }} — {{ formatDate(subject.endDate) }}
+      <div class="welcome-title">Welcome to Gripo</div>
+      <div class="welcome-text">
+        Get a grip on your work. Create your first subject to start
+        organizing tasks, agenda points, and meeting notes.
+      </div>
+      <div class="welcome-text">
+        Press <kbd>&#8984;K</kbd> then type <code>s: My First Project</code>
+      </div>
+    </div>
+
+    <template v-else>
+      <div class="page-title">Dashboard</div>
+      <div class="page-subtitle">{{ greetingText }}</div>
+
+      <div class="dashboard-grid stagger-in">
+        <!-- Today -->
+        <div class="dashboard-section">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon" style="background: rgba(196, 98, 62, 0.1); color: var(--g-accent);">
+                <q-icon name="today" />
+              </div>
+              <span class="section-label">Today</span>
+              <span class="section-count" v-if="tasksDueToday.length">{{ tasksDueToday.length }}</span>
             </div>
-          </q-card-section>
-        </q-card-section>
-      </q-card>
-    </div>
+            <div v-if="tasksDueToday.length" class="section-body">
+              <div
+                v-for="task in tasksDueToday"
+                :key="task.id!"
+                class="dash-task"
+                @click="goToSubject(task.subjectId)"
+              >
+                <q-checkbox
+                  class="dash-task-check"
+                  :model-value="task.status === 'done'"
+                  @update:model-value="toggleDone(task)"
+                  @click.stop
+                  size="sm"
+                />
+                <span class="dash-task-title" :class="{ 'is-done': task.status === 'done' }">
+                  {{ stripHtml(task.title) }}
+                </span>
+                <span class="priority-pill" :class="`priority-${task.priority}`">{{ task.priority }}</span>
+              </div>
+            </div>
+            <div v-else class="section-empty">Nothing due today</div>
+          </div>
+        </div>
 
-    <div class="q-mb-md" v-if="pinnedSubjects.length">
-      <div class="row items-center q-mb-sm">
-        <q-icon name="push_pin" class="q-mr-sm" />
-        <span class="text-weight-bold">Pinned</span>
+        <!-- This Week -->
+        <div class="dashboard-section">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon" style="background: rgba(78, 130, 160, 0.1); color: var(--g-info);">
+                <q-icon name="date_range" />
+              </div>
+              <span class="section-label">This Week</span>
+              <span class="section-count" v-if="tasksDueThisWeek.length">{{ tasksDueThisWeek.length }}</span>
+            </div>
+            <div v-if="tasksDueThisWeek.length" class="section-body">
+              <div
+                v-for="task in tasksDueThisWeek"
+                :key="task.id!"
+                class="dash-task"
+                @click="goToSubject(task.subjectId)"
+              >
+                <q-checkbox
+                  class="dash-task-check"
+                  :model-value="task.status === 'done'"
+                  @update:model-value="toggleDone(task)"
+                  @click.stop
+                  size="sm"
+                />
+                <span class="dash-task-title" :class="{ 'is-done': task.status === 'done' }">
+                  {{ stripHtml(task.title) }}
+                </span>
+                <span class="dash-task-subject">{{ subjectName(task.subjectId) }}</span>
+              </div>
+            </div>
+            <div v-else class="section-empty">Nothing else this week</div>
+          </div>
+        </div>
+
+        <!-- Next Week -->
+        <div class="dashboard-section">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon" style="background: rgba(90, 138, 96, 0.1); color: var(--g-positive);">
+                <q-icon name="event" />
+              </div>
+              <span class="section-label">Next Week</span>
+              <span class="section-count" v-if="tasksDueNextWeek.length">{{ tasksDueNextWeek.length }}</span>
+            </div>
+            <div v-if="tasksDueNextWeek.length" class="section-body">
+              <div
+                v-for="task in tasksDueNextWeek"
+                :key="task.id!"
+                class="dash-task"
+                @click="goToSubject(task.subjectId)"
+              >
+                <q-checkbox
+                  class="dash-task-check"
+                  :model-value="task.status === 'done'"
+                  @update:model-value="toggleDone(task)"
+                  @click.stop
+                  size="sm"
+                />
+                <span class="dash-task-title" :class="{ 'is-done': task.status === 'done' }">
+                  {{ stripHtml(task.title) }}
+                </span>
+                <span class="dash-task-subject">{{ subjectName(task.subjectId) }}</span>
+              </div>
+            </div>
+            <div v-else class="section-empty">Nothing next week</div>
+          </div>
+        </div>
+
+        <!-- Pinned Subjects -->
+        <div v-if="pinnedSubjects.length" class="dashboard-section">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon" style="background: rgba(196, 154, 60, 0.1); color: var(--g-warning);">
+                <q-icon name="push_pin" />
+              </div>
+              <span class="section-label">Pinned</span>
+            </div>
+            <div class="section-body">
+              <div
+                v-for="subject in pinnedSubjects"
+                :key="subject.id!"
+                class="subject-card"
+                @click="goToSubject(subject.id!)"
+              >
+                <div class="subject-card-dot" :style="{ backgroundColor: subject.color }" />
+                <span class="subject-card-name">{{ subject.name }}</span>
+                <q-icon name="push_pin" class="subject-card-pin" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ongoing Subjects -->
+        <div v-if="ongoingSubjects.length" class="dashboard-section dashboard-full">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon" style="background: rgba(90, 138, 96, 0.1); color: var(--g-positive);">
+                <q-icon name="timelapse" />
+              </div>
+              <span class="section-label">Ongoing</span>
+            </div>
+            <div class="section-body">
+              <div
+                v-for="subject in ongoingSubjects"
+                :key="subject.id!"
+                class="subject-card"
+                @click="goToSubject(subject.id!)"
+              >
+                <div class="subject-card-dot" :style="{ backgroundColor: subject.color }" />
+                <span class="subject-card-name">{{ subject.name }}</span>
+                <span class="subject-card-dates" v-if="subject.startDate && subject.endDate">
+                  {{ formatDate(subject.startDate) }} &mdash; {{ formatDate(subject.endDate) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <q-card
-        v-for="subject in pinnedSubjects"
-        :key="subject.id!"
-        flat
-        bordered
-        class="q-mb-sm rounded-borders cursor-pointer"
-        @click="goToSubject(subject.id!)"
-      >
-        <q-card-section horizontal>
-          <q-badge :style="{ backgroundColor: subject.color }" rounded class="q-ml-md self-center" />
-          <q-card-section>
-            <div class="text-subtitle2">{{ subject.name }}</div>
-          </q-card-section>
-        </q-card-section>
-      </q-card>
-    </div>
-
-    <div v-if="isEmpty" class="text-grey-6 q-pa-xl text-center">
-      <q-icon name="rocket_launch" size="48px" class="q-mb-md" />
-      <div class="text-h6">Welcome to Gripo</div>
-      <div>Press <kbd>Cmd+K</kbd> then type <code>s: My First Project</code> to create your first subject.</div>
-    </div>
+    </template>
   </q-page>
 </template>
 
@@ -67,7 +181,7 @@ import { useRouter } from 'vue-router';
 import { useSubjectStore } from 'stores/subject-store';
 import { useTaskStore } from 'stores/task-store';
 import { storeToRefs } from 'pinia';
-import DashboardSection from 'components/DashboardSection.vue';
+import type { Task } from 'src/models/types';
 
 const router = useRouter();
 const subjectStore = useSubjectStore();
@@ -93,12 +207,33 @@ const isEmpty = computed(
     pinnedSubjects.value.length === 0
 );
 
+const greetingText = computed(() => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning. Here\'s what needs your attention.';
+  if (hour < 17) return 'Good afternoon. Here\'s what needs your attention.';
+  return 'Good evening. Here\'s what needs your attention.';
+});
+
 function goToSubject(id: number) {
   void router.push({ name: 'subject', params: { id } });
 }
 
+function subjectName(subjectId: number): string {
+  return subjectStore.subjects.find((s) => s.id === subjectId)?.name ?? '';
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '');
+}
+
 function formatDate(date: Date): string {
-  return new Date(date).toLocaleDateString();
+  return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+async function toggleDone(task: Task) {
+  const newStatus = task.status === 'done' ? 'todo' : 'done';
+  await taskStore.updateTask(task.id!, { status: newStatus });
+  await taskStore.loadAllTasks();
 }
 
 onMounted(async () => {

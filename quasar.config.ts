@@ -27,8 +27,8 @@ export default defineConfig((ctx) => {
       // 'line-awesome',
       // 'roboto-font-latin-ext', // this or either 'roboto-font', NEVER both!
 
-      'roboto-font', // optional, you are not bound to it
-      'material-icons', // optional, you are not bound to it
+      // 'roboto-font', // using Fraunces + Nunito from Google Fonts instead
+      'material-icons',
     ],
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
@@ -105,13 +105,13 @@ export default defineConfig((ctx) => {
     framework: {
       config: {
         brand: {
-          primary: '#5C6BC0',
-          secondary: '#FF8A65',
-          accent: '#26A69A',
-          positive: '#66BB6A',
-          negative: '#EF5350',
-          info: '#42A5F5',
-          warning: '#FFA726',
+          primary: '#34D399',
+          secondary: '#2AB583',
+          accent: '#67E8F9',
+          positive: '#34D399',
+          negative: '#F87171',
+          info: '#67E8F9',
+          warning: '#FBBF24',
         },
       },
 

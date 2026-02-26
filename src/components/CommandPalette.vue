@@ -204,7 +204,7 @@ async function executeSelected() {
         (s) => s.name.toLowerCase() === p.subjectName!.toLowerCase()
       );
       if (subject) {
-        await createItem(p.entityType as 'task' | 'agenda' | 'minutes', p.title, subject.id!);
+        await createItem(p.entityType, p.title, subject.id!);
       }
     }
   }

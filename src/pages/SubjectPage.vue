@@ -1,41 +1,64 @@
 <template>
   <q-page class="q-pa-md">
-    <div v-if="subject" class="column">
-      <div class="row items-center q-mb-md">
-        <q-badge :style="{ backgroundColor: subject.color }" rounded class="q-mr-sm" />
-        <h5 class="q-mt-none q-mb-none">{{ subject.name }}</h5>
-        <q-space />
+    <div v-if="subject" class="stagger-in">
+      <div class="subject-header">
+        <div class="subject-color" :style="{ backgroundColor: subject.color }" />
+        <div class="subject-info">
+          <div class="subject-name">{{ subject.name }}</div>
+          <div class="subject-type">{{ subject.type }}</div>
+        </div>
         <q-btn
           flat
           round
+          size="sm"
           :icon="subject.pinned ? 'push_pin' : 'o_push_pin'"
+          :color="subject.pinned ? 'primary' : 'grey-6'"
           @click="togglePin"
-        />
+        >
+          <q-tooltip>{{ subject.pinned ? 'Unpin' : 'Pin to dashboard' }}</q-tooltip>
+        </q-btn>
       </div>
 
-      <q-tabs v-model="activeTab" dense align="left" class="text-primary">
-        <q-tab name="tasks" label="Tasks" />
-        <q-tab name="agenda" label="Agenda" />
-        <q-tab name="minutes" label="Minutes" />
-      </q-tabs>
+      <div class="tab-bar">
+        <button
+          class="tab-item"
+          :class="{ 'is-active': activeTab === 'tasks' }"
+          @click="activeTab = 'tasks'"
+        >
+          Tasks
+        </button>
+        <button
+          class="tab-item"
+          :class="{ 'is-active': activeTab === 'agenda' }"
+          @click="activeTab = 'agenda'"
+        >
+          Agenda
+        </button>
+        <button
+          class="tab-item"
+          :class="{ 'is-active': activeTab === 'minutes' }"
+          @click="activeTab = 'minutes'"
+        >
+          Minutes
+        </button>
+      </div>
 
-      <q-separator />
-
-      <q-tab-panels v-model="activeTab" animated>
-        <q-tab-panel name="tasks">
-          <TaskList />
-        </q-tab-panel>
-        <q-tab-panel name="agenda">
-          <AgendaList />
-        </q-tab-panel>
-        <q-tab-panel name="minutes">
-          <MinutesList @select="openMinutes" />
-        </q-tab-panel>
-      </q-tab-panels>
+      <div v-show="activeTab === 'tasks'">
+        <TaskList />
+      </div>
+      <div v-show="activeTab === 'agenda'">
+        <AgendaList />
+      </div>
+      <div v-show="activeTab === 'minutes'">
+        <MinutesList />
+      </div>
     </div>
 
-    <div v-else class="text-grey-6 q-pa-lg text-center">
-      Subject not found.
+    <div v-else class="empty-state">
+      <div class="empty-icon">
+        <q-icon name="search_off" />
+      </div>
+      <div class="empty-title">Subject not found</div>
     </div>
   </q-page>
 </template>
@@ -47,7 +70,7 @@ import { useSubjectStore } from 'stores/subject-store';
 import { useTaskStore } from 'stores/task-store';
 import { useAgendaStore } from 'stores/agenda-store';
 import { useMinutesStore } from 'stores/minutes-store';
-import type { Subject, MeetingMinutes } from 'src/models/types';
+import type { Subject } from 'src/models/types';
 import TaskList from 'components/TaskList.vue';
 import AgendaList from 'components/AgendaList.vue';
 import MinutesList from 'components/MinutesList.vue';
@@ -78,11 +101,6 @@ async function togglePin() {
     await subjectStore.togglePin(subject.value.id);
     subject.value = subjectStore.subjects.find((s) => s.id === subject.value!.id);
   }
-}
-
-function openMinutes(item: MeetingMinutes) {
-  // Will be implemented with rich text editor in Task 14
-  console.log('Open minutes:', item.id);
 }
 
 watch(

@@ -1,35 +1,42 @@
 <template>
   <div>
-    <q-list separator v-if="activePoints.length">
-      <template v-for="point in activePoints" :key="point.id">
-        <q-item
-          clickable
-          class="rounded-borders q-my-xs"
-          @click="toggleSelected(point.id!)"
-        >
-          <q-item-section side>
-            <q-checkbox
-              :model-value="point.resolved"
-              @update:model-value="toggleResolved(point)"
-              @click.stop
-            />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label :class="{ 'text-strike text-grey': point.resolved }">
-              <span v-html="point.title" />
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+    <div v-if="activePoints.length">
+      <div
+        v-for="point in activePoints"
+        :key="point.id!"
+        class="item-card"
+        :class="{
+          'is-active': selectedId === point.id,
+          'is-done': point.resolved,
+        }"
+        @click="toggleSelected(point.id!)"
+      >
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <q-checkbox
+            :model-value="point.resolved"
+            @update:model-value="toggleResolved(point)"
+            @click.stop
+            size="sm"
+          />
+          <div style="flex: 1; min-width: 0;">
+            <div class="item-title">
+              {{ stripHtml(point.title) }}
+            </div>
+          </div>
+        </div>
+
         <AgendaDetail
           v-if="selectedId === point.id"
           :agenda-point="point"
           @close="selectedId = undefined"
         />
-      </template>
-    </q-list>
+      </div>
+    </div>
 
-    <div v-else class="text-grey-6 q-pa-lg text-center">
-      No agenda points. Press Cmd+K then type a: to add one.
+    <div v-else class="empty-state">
+      <div class="empty-icon"><q-icon name="chat_bubble_outline" /></div>
+      <div class="empty-title">No agenda points</div>
+      <div class="empty-description">Press <kbd>&#8984;K</kbd> then type <code>a: Your topic</code> to add one.</div>
     </div>
   </div>
 </template>
@@ -48,6 +55,10 @@ const selectedId = ref<number | undefined>();
 
 function toggleSelected(id: number) {
   selectedId.value = selectedId.value === id ? undefined : id;
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '');
 }
 
 async function toggleResolved(point: AgendaPoint) {

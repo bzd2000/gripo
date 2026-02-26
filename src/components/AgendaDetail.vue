@@ -1,16 +1,17 @@
 <template>
-  <q-card flat bordered class="rounded-borders q-mb-sm">
-    <q-card-section>
+  <div class="detail-panel" @click.stop>
+    <div class="detail-section">
+      <div class="detail-label">Topic</div>
       <TiptapEditor v-model="localTitle" placeholder="Agenda point..." @update:model-value="debouncedSave" />
-    </q-card-section>
-    <q-card-section class="q-pt-none">
-      <div class="text-caption text-grey q-mb-xs">Notes</div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-label">Notes</div>
       <TiptapEditor v-model="localContent" placeholder="Add notes..." @update:model-value="debouncedSave" />
-    </q-card-section>
-    <q-card-actions>
-      <q-btn flat label="Close" @click="$emit('close')" />
-    </q-card-actions>
-  </q-card>
+    </div>
+    <div class="detail-actions">
+      <q-btn flat dense size="sm" label="Close" color="grey-7" @click="$emit('close')" />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
