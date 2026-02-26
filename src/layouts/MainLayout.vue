@@ -56,6 +56,9 @@ import { ref, onMounted } from 'vue';
 import { useSubjectStore } from 'stores/subject-store';
 import { storeToRefs } from 'pinia';
 import CommandPalette from 'components/CommandPalette.vue';
+import { useKeyboardNav } from 'src/composables/useKeyboardNav';
+
+useKeyboardNav();
 
 const subjectStore = useSubjectStore();
 const { activeSubjects } = storeToRefs(subjectStore);
