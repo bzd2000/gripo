@@ -26,7 +26,7 @@ describe('useMinutesStore', () => {
     });
     await store.loadForSubject(1);
     expect(store.minutes).toHaveLength(1);
-    expect(store.minutes[0].title).toBe('Weekly standup');
+    expect(store.minutes[0]!.title).toBe('Weekly standup');
   });
 
   it('updates minutes content', async () => {
@@ -37,9 +37,9 @@ describe('useMinutesStore', () => {
       date: new Date(),
     });
     await store.loadForSubject(1);
-    const id = store.minutes[0].id!;
+    const id = store.minutes[0]!.id!;
     await store.updateMinutes(id, { content: '<p>Discussed roadmap</p>' });
-    expect(store.minutes[0].content).toBe('<p>Discussed roadmap</p>');
+    expect(store.minutes[0]!.content).toBe('<p>Discussed roadmap</p>');
   });
 
   it('soft-deletes minutes', async () => {
@@ -50,7 +50,7 @@ describe('useMinutesStore', () => {
       date: new Date(),
     });
     await store.loadForSubject(1);
-    const id = store.minutes[0].id!;
+    const id = store.minutes[0]!.id!;
     await store.deleteMinutes(id);
     expect(store.activeMinutes).toHaveLength(0);
   });
@@ -60,7 +60,7 @@ describe('useMinutesStore', () => {
     await store.createMinutes({ subjectId: 1, title: 'Older', date: new Date('2026-01-01') });
     await store.createMinutes({ subjectId: 1, title: 'Newer', date: new Date('2026-02-01') });
     await store.loadForSubject(1);
-    expect(store.sortedMinutes[0].title).toBe('Newer');
-    expect(store.sortedMinutes[1].title).toBe('Older');
+    expect(store.sortedMinutes[0]!.title).toBe('Newer');
+    expect(store.sortedMinutes[1]!.title).toBe('Older');
   });
 });

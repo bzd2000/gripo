@@ -102,17 +102,20 @@ export const useTaskStore = defineStore('tasks', () => {
     dueDate?: Date;
   }) {
     const now = new Date();
-    await db.tasks.add({
+    const task: Task = {
       subjectId: data.subjectId,
       title: data.title,
       description: data.description ?? '',
       status: 'todo',
       priority: data.priority,
-      dueDate: data.dueDate,
       deleted: false,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+    if (data.dueDate) {
+      task.dueDate = data.dueDate;
+    }
+    await db.tasks.add(task);
   }
 
   async function updateTask(id: number, data: Partial<Task>) {

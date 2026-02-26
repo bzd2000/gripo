@@ -25,9 +25,9 @@
 
         <q-item
           v-for="subject in activeSubjects"
-          :key="subject.id"
+          :key="subject.id!"
           clickable
-          :to="{ name: 'subject', params: { id: subject.id } }"
+          :to="{ name: 'subject', params: { id: subject.id! } }"
           active-class="text-primary"
         >
           <q-item-section avatar>

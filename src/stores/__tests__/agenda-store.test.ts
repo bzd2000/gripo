@@ -21,17 +21,17 @@ describe('useAgendaStore', () => {
     await store.createAgendaPoint({ subjectId: 1, title: 'Discuss budget' });
     await store.loadForSubject(1);
     expect(store.agendaPoints).toHaveLength(1);
-    expect(store.agendaPoints[0].title).toBe('Discuss budget');
-    expect(store.agendaPoints[0].resolved).toBe(false);
+    expect(store.agendaPoints[0]!.title).toBe('Discuss budget');
+    expect(store.agendaPoints[0]!.resolved).toBe(false);
   });
 
   it('resolves an agenda point', async () => {
     const store = useAgendaStore();
     await store.createAgendaPoint({ subjectId: 1, title: 'Budget' });
     await store.loadForSubject(1);
-    const id = store.agendaPoints[0].id!;
+    const id = store.agendaPoints[0]!.id!;
     await store.toggleResolved(id);
-    expect(store.agendaPoints[0].resolved).toBe(true);
+    expect(store.agendaPoints[0]!.resolved).toBe(true);
   });
 
   it('filters unresolved agenda points', async () => {
@@ -39,10 +39,10 @@ describe('useAgendaStore', () => {
     await store.createAgendaPoint({ subjectId: 1, title: 'Open' });
     await store.createAgendaPoint({ subjectId: 1, title: 'Done' });
     await store.loadForSubject(1);
-    const doneId = store.agendaPoints[1].id!;
+    const doneId = store.agendaPoints[1]!.id!;
     await store.toggleResolved(doneId);
     expect(store.unresolvedPoints).toHaveLength(1);
-    expect(store.unresolvedPoints[0].title).toBe('Open');
+    expect(store.unresolvedPoints[0]!.title).toBe('Open');
   });
 
   it('loads all unresolved across subjects', async () => {
@@ -63,7 +63,7 @@ describe('useAgendaStore', () => {
     const store = useAgendaStore();
     await store.createAgendaPoint({ subjectId: 1, title: 'Delete me' });
     await store.loadForSubject(1);
-    const id = store.agendaPoints[0].id!;
+    const id = store.agendaPoints[0]!.id!;
     await store.deleteAgendaPoint(id);
     expect(store.activePoints).toHaveLength(0);
   });

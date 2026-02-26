@@ -20,21 +20,21 @@ describe('useSubjectStore', () => {
     const store = useSubjectStore();
     await store.createSubject({ name: 'Project Alpha', type: 'project', color: '#4A90D9' });
     expect(store.subjects).toHaveLength(1);
-    expect(store.subjects[0].name).toBe('Project Alpha');
+    expect(store.subjects[0]!.name).toBe('Project Alpha');
   });
 
   it('updates a subject', async () => {
     const store = useSubjectStore();
     await store.createSubject({ name: 'Old Name', type: 'project', color: '#4A90D9' });
-    const id = store.subjects[0].id!;
+    const id = store.subjects[0]!.id!;
     await store.updateSubject(id, { name: 'New Name' });
-    expect(store.subjects[0].name).toBe('New Name');
+    expect(store.subjects[0]!.name).toBe('New Name');
   });
 
   it('archives a subject', async () => {
     const store = useSubjectStore();
     await store.createSubject({ name: 'To Archive', type: 'project', color: '#4A90D9' });
-    const id = store.subjects[0].id!;
+    const id = store.subjects[0]!.id!;
     await store.archiveSubject(id);
     expect(store.activeSubjects).toHaveLength(0);
   });
@@ -42,7 +42,7 @@ describe('useSubjectStore', () => {
   it('pins a subject', async () => {
     const store = useSubjectStore();
     await store.createSubject({ name: 'Pin Me', type: 'project', color: '#4A90D9' });
-    const id = store.subjects[0].id!;
+    const id = store.subjects[0]!.id!;
     await store.togglePin(id);
     expect(store.pinnedSubjects).toHaveLength(1);
   });

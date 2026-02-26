@@ -33,7 +33,7 @@ export function parseCommand(input: string): ParsedInput {
     const parts = trimmed.slice(1).split(/\s+/);
     return {
       type: 'command',
-      command: parts[0],
+      command: parts[0] ?? '',
       args: parts.slice(1).join(' '),
     };
   }

@@ -13,7 +13,7 @@
       </div>
       <q-card
         v-for="subject in ongoingSubjects"
-        :key="subject.id"
+        :key="subject.id!"
         flat
         bordered
         class="q-mb-sm rounded-borders cursor-pointer"
@@ -38,7 +38,7 @@
       </div>
       <q-card
         v-for="subject in pinnedSubjects"
-        :key="subject.id"
+        :key="subject.id!"
         flat
         bordered
         class="q-mb-sm rounded-borders cursor-pointer"

@@ -70,7 +70,7 @@ interface SearchResult {
   id: string;
   icon: string;
   label: string;
-  caption?: string;
+  caption?: string | undefined;
   action: () => void;
 }
 
@@ -186,14 +186,14 @@ async function executeSelected() {
   const p = parsed.value;
 
   if (results.value.length > 0) {
-    results.value[selectedIndex.value].action();
+    results.value[selectedIndex.value]?.action();
     return;
   }
 
   if (p.type === 'create') {
     if (p.entityType === 'subject') {
       const colors = ['#4A90D9', '#E67E22', '#2ECC71', '#9B59B6', '#E74C3C', '#1ABC9C'];
-      const color = colors[Math.floor(Math.random() * colors.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)]!;
       await subjectStore.createSubject({ name: p.title, type: 'project', color });
       close();
       return;
@@ -204,7 +204,7 @@ async function executeSelected() {
         (s) => s.name.toLowerCase() === p.subjectName!.toLowerCase()
       );
       if (subject) {
-        await createItem(p.entityType, p.title, subject.id!);
+        await createItem(p.entityType as 'task' | 'agenda' | 'minutes', p.title, subject.id!);
       }
     }
   }

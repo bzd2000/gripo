@@ -6,7 +6,7 @@
     </div>
     <q-card flat bordered class="rounded-borders">
       <q-list separator>
-        <q-item v-for="task in items" :key="task.id" clickable @click="goToSubject(task.subjectId)">
+        <q-item v-for="task in items" :key="task.id!" clickable @click="goToSubject(task.subjectId)">
           <q-item-section side>
             <q-checkbox
               :model-value="task.status === 'done'"
