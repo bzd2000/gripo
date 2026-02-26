@@ -127,7 +127,7 @@ async function search(q: string): Promise<SearchResult[]> {
         label: s.name,
         caption: s.type,
         action: () => {
-          router.push({ name: 'subject', params: { id: s.id } });
+          void router.push({ name: 'subject', params: { id: s.id } });
           close();
         },
       });
@@ -144,7 +144,7 @@ async function search(q: string): Promise<SearchResult[]> {
       label: t.title.replace(/<[^>]*>/g, ''),
       caption: subjectStore.subjects.find((s) => s.id === t.subjectId)?.name,
       action: () => {
-        router.push({ name: 'subject', params: { id: t.subjectId } });
+        void router.push({ name: 'subject', params: { id: t.subjectId } });
         close();
       },
     });
@@ -161,7 +161,7 @@ async function search(q: string): Promise<SearchResult[]> {
       label: a.title.replace(/<[^>]*>/g, ''),
       caption: subjectStore.subjects.find((s) => s.id === a.subjectId)?.name,
       action: () => {
-        router.push({ name: 'subject', params: { id: a.subjectId } });
+        void router.push({ name: 'subject', params: { id: a.subjectId } });
         close();
       },
     });
@@ -178,7 +178,7 @@ async function createItem(entityType: 'task' | 'agenda' | 'minutes', title: stri
   } else if (entityType === 'minutes') {
     await minutesStore.createMinutes({ subjectId, title, date: new Date() });
   }
-  router.push({ name: 'subject', params: { id: subjectId } });
+  void router.push({ name: 'subject', params: { id: subjectId } });
   close();
 }
 
@@ -204,7 +204,7 @@ async function executeSelected() {
         (s) => s.name.toLowerCase() === p.subjectName!.toLowerCase()
       );
       if (subject) {
-        await createItem(p.entityType as 'task' | 'agenda' | 'minutes', p.title, subject.id!);
+        await createItem(p.entityType, p.title, subject.id!);
       }
     }
   }
@@ -231,7 +231,7 @@ function open() {
   results.value = [];
   selectedIndex.value = 0;
   isOpen.value = true;
-  nextTick(() => inputRef.value?.focus());
+  void nextTick(() => inputRef.value?.focus());
 }
 
 function close() {

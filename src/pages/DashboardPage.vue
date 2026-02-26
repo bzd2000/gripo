@@ -94,7 +94,7 @@ const isEmpty = computed(
 );
 
 function goToSubject(id: number) {
-  router.push({ name: 'subject', params: { id } });
+  void router.push({ name: 'subject', params: { id } });
 }
 
 function formatDate(date: Date): string {

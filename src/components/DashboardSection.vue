@@ -64,7 +64,7 @@ function priorityColor(priority: TaskPriority): string {
 }
 
 function goToSubject(subjectId: number) {
-  router.push({ name: 'subject', params: { id: subjectId } });
+  void router.push({ name: 'subject', params: { id: subjectId } });
 }
 
 async function toggleDone(task: Task) {

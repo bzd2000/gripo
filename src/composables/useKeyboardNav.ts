@@ -19,7 +19,7 @@ export function useKeyboardNav() {
     // Cmd+1 = Dashboard
     if ((event.metaKey || event.ctrlKey) && event.key === '1') {
       event.preventDefault();
-      router.push({ name: 'dashboard' });
+      void router.push({ name: 'dashboard' });
       return;
     }
 

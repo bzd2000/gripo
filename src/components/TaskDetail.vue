@@ -31,8 +31,8 @@ let saveTimeout: ReturnType<typeof setTimeout>;
 
 function debouncedSave() {
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(async () => {
-    await taskStore.updateTask(props.task.id!, {
+  saveTimeout = setTimeout(() => {
+    void taskStore.updateTask(props.task.id!, {
       title: localTitle.value,
       description: localDescription.value,
     });

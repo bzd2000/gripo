@@ -31,8 +31,8 @@ let saveTimeout: ReturnType<typeof setTimeout>;
 
 function debouncedSave() {
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(async () => {
-    await minutesStore.updateMinutes(props.minutes.id!, {
+  saveTimeout = setTimeout(() => {
+    void minutesStore.updateMinutes(props.minutes.id!, {
       title: localTitle.value,
       content: localContent.value,
     });

@@ -31,8 +31,8 @@ let saveTimeout: ReturnType<typeof setTimeout>;
 
 function debouncedSave() {
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(async () => {
-    await agendaStore.updateAgendaPoint(props.agendaPoint.id!, {
+  saveTimeout = setTimeout(() => {
+    void agendaStore.updateAgendaPoint(props.agendaPoint.id!, {
       title: localTitle.value,
       content: localContent.value,
     });

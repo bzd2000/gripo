@@ -88,7 +88,7 @@ function openMinutes(item: MeetingMinutes) {
 watch(
   () => route.params.id,
   (id) => {
-    if (id) loadSubject(Number(id));
+    if (id) void loadSubject(Number(id));
   },
   { immediate: true }
 );
