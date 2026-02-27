@@ -19,6 +19,37 @@
       <div class="page-subtitle">{{ greetingText }}</div>
 
       <div class="dashboard-grid stagger-in">
+        <!-- Overdue -->
+        <div v-if="overdueTasks.length" class="dashboard-section">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon" style="background: rgba(248, 113, 113, 0.12); color: var(--g-red);">
+                <q-icon name="warning" />
+              </div>
+              <span class="section-label">Overdue</span>
+              <span class="section-count" v-if="overdueTasks.length">{{ overdueTasks.length }}</span>
+            </div>
+            <div class="section-body">
+              <div
+                v-for="task in overdueTasks"
+                :key="task.id!"
+                class="dash-task"
+                @click="goToSubject(task.subjectId)"
+              >
+                <q-checkbox
+                  class="dash-task-check"
+                  :model-value="task.status === 'done'"
+                  @update:model-value="toggleDone(task)"
+                  @click.stop
+                  size="sm"
+                />
+                <span class="dash-task-title">{{ stripHtml(task.title) }}</span>
+                <span class="dash-task-subject">{{ subjectName(task.subjectId) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Today -->
         <div class="dashboard-section">
           <div class="section-card">
@@ -121,6 +152,30 @@
           </div>
         </div>
 
+        <!-- Unresolved Agendas -->
+        <div v-if="unresolvedPoints.length" class="dashboard-section">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon" style="background: rgba(103, 232, 249, 0.1); color: var(--g-cyan);">
+                <q-icon name="chat_bubble_outline" />
+              </div>
+              <span class="section-label">To Discuss</span>
+              <span class="section-count">{{ unresolvedPoints.length }}</span>
+            </div>
+            <div class="section-body">
+              <div
+                v-for="point in unresolvedPoints"
+                :key="point.id!"
+                class="dash-task"
+                @click="goToSubject(point.subjectId)"
+              >
+                <span class="dash-task-title" style="padding-left: 4px;">{{ stripHtml(point.title) }}</span>
+                <span class="dash-task-subject">{{ subjectName(point.subjectId) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Pinned Subjects -->
         <div v-if="pinnedSubjects.length" class="dashboard-section">
           <div class="section-card">
@@ -180,15 +235,18 @@ import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSubjectStore } from 'stores/subject-store';
 import { useTaskStore } from 'stores/task-store';
+import { useAgendaStore } from 'stores/agenda-store';
 import { storeToRefs } from 'pinia';
 import type { Task } from 'src/models/types';
 
 const router = useRouter();
 const subjectStore = useSubjectStore();
 const taskStore = useTaskStore();
+const agendaStore = useAgendaStore();
 
 const { activeSubjects, pinnedSubjects } = storeToRefs(subjectStore);
-const { tasksDueToday, tasksDueThisWeek, tasksDueNextWeek } = storeToRefs(taskStore);
+const { tasksDueToday, tasksDueThisWeek, tasksDueNextWeek, overdueTasks } = storeToRefs(taskStore);
+const { unresolvedPoints } = storeToRefs(agendaStore);
 
 const ongoingSubjects = computed(() =>
   activeSubjects.value.filter((s) => {
@@ -200,9 +258,11 @@ const ongoingSubjects = computed(() =>
 
 const isEmpty = computed(
   () =>
+    overdueTasks.value.length === 0 &&
     tasksDueToday.value.length === 0 &&
     tasksDueThisWeek.value.length === 0 &&
     tasksDueNextWeek.value.length === 0 &&
+    unresolvedPoints.value.length === 0 &&
     ongoingSubjects.value.length === 0 &&
     pinnedSubjects.value.length === 0
 );
@@ -240,6 +300,7 @@ onMounted(async () => {
   await Promise.all([
     subjectStore.loadSubjects(),
     taskStore.loadAllTasks(),
+    agendaStore.loadAllUnresolved(),
   ]);
 });
 </script>

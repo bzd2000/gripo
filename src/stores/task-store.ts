@@ -84,6 +84,17 @@ export const useTaskStore = defineStore('tasks', () => {
     );
   });
 
+  const overdueTasks = computed(() => {
+    const todayStart = startOfDay(new Date());
+    return allTasks.value.filter(
+      (t) =>
+        !t.deleted &&
+        t.status !== 'done' &&
+        t.dueDate &&
+        t.dueDate < todayStart
+    );
+  });
+
   async function loadTasksForSubject(subjectId: number) {
     tasks.value = await db.tasks.where('subjectId').equals(subjectId).toArray();
   }
@@ -137,6 +148,7 @@ export const useTaskStore = defineStore('tasks', () => {
     tasksDueToday,
     tasksDueThisWeek,
     tasksDueNextWeek,
+    overdueTasks,
     loadTasksForSubject,
     loadAllTasks,
     createTask,
