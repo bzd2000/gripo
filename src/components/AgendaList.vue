@@ -1,5 +1,14 @@
 <template>
   <div>
+    <div class="quick-add" style="margin-bottom: 12px;">
+      <input
+        v-model="newPointTitle"
+        class="quick-add-input"
+        placeholder="+ Add agenda point..."
+        @keydown.enter="addPoint"
+      />
+    </div>
+
     <div v-if="activePoints.length">
       <div
         v-for="point in activePoints"
@@ -48,10 +57,21 @@ import { storeToRefs } from 'pinia';
 import type { AgendaPoint } from 'src/models/types';
 import AgendaDetail from 'components/AgendaDetail.vue';
 
+const props = defineProps<{ subjectId: number }>();
+
 const agendaStore = useAgendaStore();
 const { activePoints } = storeToRefs(agendaStore);
 
 const selectedId = ref<number | undefined>();
+const newPointTitle = ref('');
+
+async function addPoint() {
+  const title = newPointTitle.value.trim();
+  if (!title) return;
+  await agendaStore.createAgendaPoint({ subjectId: props.subjectId, title });
+  newPointTitle.value = '';
+  await agendaStore.loadForSubject(props.subjectId);
+}
 
 function toggleSelected(id: number) {
   selectedId.value = selectedId.value === id ? undefined : id;

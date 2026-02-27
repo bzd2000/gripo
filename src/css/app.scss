@@ -924,3 +924,25 @@ code {
 .text-primary {
   color: var(--g-accent) !important;
 }
+
+// ─── Quick Add ──────────────────────────────────────────────
+.quick-add-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--g-font);
+  font-size: 0.82rem;
+  background: var(--g-surface-sunken);
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius);
+  color: var(--g-text);
+  outline: none;
+  transition: border-color var(--g-duration) var(--g-ease);
+
+  &::placeholder {
+    color: var(--g-text-muted);
+  }
+
+  &:focus {
+    border-color: var(--g-accent-border);
+  }
+}

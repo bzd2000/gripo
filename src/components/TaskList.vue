@@ -1,5 +1,14 @@
 <template>
   <div>
+    <div class="quick-add" style="margin-bottom: 12px;">
+      <input
+        v-model="newTaskTitle"
+        class="quick-add-input"
+        placeholder="+ Add task..."
+        @keydown.enter="addTask"
+      />
+    </div>
+
     <div v-if="activeTasks.length">
       <div
         v-for="task in activeTasks"
@@ -52,10 +61,21 @@ import { storeToRefs } from 'pinia';
 import type { Task } from 'src/models/types';
 import TaskDetail from 'components/TaskDetail.vue';
 
+const props = defineProps<{ subjectId: number }>();
+
 const taskStore = useTaskStore();
 const { activeTasks } = storeToRefs(taskStore);
 
 const selectedId = ref<number | undefined>();
+const newTaskTitle = ref('');
+
+async function addTask() {
+  const title = newTaskTitle.value.trim();
+  if (!title) return;
+  await taskStore.createTask({ subjectId: props.subjectId, title, priority: 'medium' });
+  newTaskTitle.value = '';
+  await taskStore.loadTasksForSubject(props.subjectId);
+}
 
 function toggleSelected(id: number) {
   selectedId.value = selectedId.value === id ? undefined : id;

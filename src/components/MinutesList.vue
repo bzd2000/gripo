@@ -1,5 +1,14 @@
 <template>
   <div>
+    <div class="quick-add" style="margin-bottom: 12px;">
+      <input
+        v-model="newMinutesTitle"
+        class="quick-add-input"
+        placeholder="+ Add meeting notes..."
+        @keydown.enter="addMinutes"
+      />
+    </div>
+
     <div v-if="sortedMinutes.length">
       <div
         v-for="item in sortedMinutes"
@@ -38,10 +47,21 @@ import { useMinutesStore } from 'stores/minutes-store';
 import { storeToRefs } from 'pinia';
 import MinutesDetail from 'components/MinutesDetail.vue';
 
+const props = defineProps<{ subjectId: number }>();
+
 const minutesStore = useMinutesStore();
 const { sortedMinutes } = storeToRefs(minutesStore);
 
 const selectedId = ref<number | undefined>();
+const newMinutesTitle = ref('');
+
+async function addMinutes() {
+  const title = newMinutesTitle.value.trim();
+  if (!title) return;
+  await minutesStore.createMinutes({ subjectId: props.subjectId, title, date: new Date() });
+  newMinutesTitle.value = '';
+  await minutesStore.loadForSubject(props.subjectId);
+}
 
 function toggleSelected(id: number) {
   selectedId.value = selectedId.value === id ? undefined : id;

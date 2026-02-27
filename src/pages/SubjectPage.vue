@@ -44,13 +44,13 @@
       </div>
 
       <div v-show="activeTab === 'tasks'">
-        <TaskList />
+        <TaskList :subject-id="subject.id!" />
       </div>
       <div v-show="activeTab === 'agenda'">
-        <AgendaList />
+        <AgendaList :subject-id="subject.id!" />
       </div>
       <div v-show="activeTab === 'minutes'">
-        <MinutesList />
+        <MinutesList :subject-id="subject.id!" />
       </div>
     </div>
 
