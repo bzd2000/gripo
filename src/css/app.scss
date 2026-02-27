@@ -1011,3 +1011,99 @@ code {
     border-color: var(--g-accent-border);
   }
 }
+
+// ─── Subject Editing ────────────────────────────────────────
+.subject-name-input {
+  font-family: var(--g-font);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--g-text-bright);
+  background: var(--g-surface-sunken);
+  border: 1px solid var(--g-accent-border);
+  border-radius: var(--g-radius);
+  padding: 2px 8px;
+  outline: none;
+  width: 100%;
+}
+
+.subject-type-btn {
+  font-family: var(--g-font);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--g-text-dim);
+  background: none;
+  border: 1px dashed var(--g-border);
+  border-radius: var(--g-radius-sm);
+  padding: 1px 8px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all var(--g-duration) var(--g-ease);
+
+  &:hover {
+    border-color: var(--g-border-bright);
+    color: var(--g-text);
+  }
+}
+
+.subject-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+
+  .date-separator {
+    color: var(--g-text-muted);
+    font-size: 0.75rem;
+  }
+}
+
+.set-dates-btn {
+  font-family: var(--g-font);
+  font-size: 0.7rem;
+  color: var(--g-text-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    color: var(--g-accent);
+  }
+}
+
+.color-picker {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--g-surface-raised);
+  border: 1px solid var(--g-border-bright);
+  border-radius: var(--g-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color var(--g-duration) var(--g-ease);
+
+  &:hover {
+    border-color: var(--g-text-secondary);
+  }
+
+  &.is-active {
+    border-color: var(--g-text-bright);
+  }
+}
+
+.subject-header .subject-color {
+  position: relative;
+}
