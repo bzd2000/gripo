@@ -27,7 +27,7 @@
                 <q-icon name="warning" />
               </div>
               <span class="section-label">Overdue</span>
-              <span class="section-count" v-if="overdueTasks.length">{{ overdueTasks.length }}</span>
+              <span class="section-count">{{ overdueTasks.length }}</span>
             </div>
             <div class="section-body">
               <div
