@@ -17,6 +17,7 @@
         :class="{
           'is-active': selectedId === task.id,
           'is-done': task.status === 'done',
+          'is-focused': focusedId === task.id && selectedId !== task.id,
         }"
         @click="toggleSelected(task.id!)"
       >
@@ -55,19 +56,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useTaskStore } from 'stores/task-store';
 import { storeToRefs } from 'pinia';
 import type { Task } from 'src/models/types';
 import TaskDetail from 'components/TaskDetail.vue';
+import { useListNavigation } from 'src/composables/useListNavigation';
 
-const props = defineProps<{ subjectId: number }>();
+const props = defineProps<{
+  subjectId: number;
+  isActive?: boolean;
+}>();
 
 const taskStore = useTaskStore();
 const { activeTasks } = storeToRefs(taskStore);
 
 const selectedId = ref<number | undefined>();
 const newTaskTitle = ref('');
+
+const isActiveRef = computed(() => props.isActive ?? true);
+
+const { focusedId } = useListNavigation({
+  items: activeTasks,
+  getId: (task: Task) => task.id!,
+  selectedId,
+  isActive: isActiveRef,
+});
 
 async function addTask() {
   const title = newTaskTitle.value.trim();

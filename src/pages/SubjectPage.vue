@@ -83,13 +83,13 @@
       </div>
 
       <div v-show="activeTab === 'tasks'">
-        <TaskList :subject-id="subject.id!" />
+        <TaskList :subject-id="subject.id!" :is-active="activeTab === 'tasks'" />
       </div>
       <div v-show="activeTab === 'agenda'">
-        <AgendaList :subject-id="subject.id!" />
+        <AgendaList :subject-id="subject.id!" :is-active="activeTab === 'agenda'" />
       </div>
       <div v-show="activeTab === 'minutes'">
-        <MinutesList :subject-id="subject.id!" />
+        <MinutesList :subject-id="subject.id!" :is-active="activeTab === 'minutes'" />
       </div>
     </div>
 
@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubjectStore } from 'stores/subject-store';
 import { useTaskStore } from 'stores/task-store';
@@ -232,6 +232,34 @@ async function togglePin() {
     subject.value = subjectStore.subjects.find((s) => s.id === subject.value!.id);
   }
 }
+
+const tabKeys: Record<string, string> = { '1': 'tasks', '2': 'agenda', '3': 'minutes' };
+
+function handleTabShortcut(event: KeyboardEvent) {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const target = event.target as HTMLElement;
+  if (
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.isContentEditable ||
+    target.closest('.ProseMirror')
+  ) {
+    return;
+  }
+  const tab = tabKeys[event.key];
+  if (tab) {
+    event.preventDefault();
+    activeTab.value = tab;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleTabShortcut);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleTabShortcut);
+});
 
 async function loadSubject(id: number) {
   await subjectStore.loadSubjects();

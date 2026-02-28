@@ -1,18 +1,24 @@
 <template>
-  <div class="detail-panel" @click.stop>
+  <div class="detail-panel" @click.stop @keydown="handleTab">
     <div class="detail-section">
       <div class="detail-label">Title</div>
-      <TiptapEditor v-model="localTitle" placeholder="Task title..." @update:model-value="debouncedSave" />
+      <TiptapEditor ref="titleEditor" v-model="localTitle" placeholder="Task title..." data-field-index="0" @update:model-value="debouncedSave" />
     </div>
 
     <div class="detail-section detail-fields">
       <div class="field-group">
         <div class="detail-label">Status</div>
-        <div class="pill-toggle">
+        <div
+          class="pill-toggle"
+          tabindex="0"
+          data-field-index="1"
+          @keydown="handlePillKeys($event, statuses, localStatus, setStatus)"
+        >
           <button
             v-for="s in statuses"
             :key="s"
             class="pill-btn"
+            tabindex="-1"
             :class="{ 'is-active': localStatus === s }"
             @click="setStatus(s)"
           >{{ statusLabels[s] }}</button>
@@ -20,11 +26,17 @@
       </div>
       <div class="field-group">
         <div class="detail-label">Priority</div>
-        <div class="pill-toggle">
+        <div
+          class="pill-toggle"
+          tabindex="0"
+          data-field-index="2"
+          @keydown="handlePillKeys($event, priorities, localPriority, setPriority)"
+        >
           <button
             v-for="p in priorities"
             :key="p"
             class="pill-btn"
+            tabindex="-1"
             :class="[`priority-${p}`, { 'is-active': localPriority === p }]"
             @click="setPriority(p)"
           >{{ p }}</button>
@@ -36,6 +48,7 @@
           <input
             type="date"
             class="date-input"
+            data-field-index="3"
             :value="localDueDateStr"
             @input="setDueDate(($event.target as HTMLInputElement).value)"
           />
@@ -50,7 +63,7 @@
 
     <div class="detail-section">
       <div class="detail-label">Description</div>
-      <TiptapEditor v-model="localDescription" placeholder="Add a description..." @update:model-value="debouncedSave" />
+      <TiptapEditor ref="descEditor" v-model="localDescription" placeholder="Add a description..." :toolbar="true" data-field-index="4" @update:model-value="debouncedSave" />
     </div>
 
     <div class="detail-actions">
@@ -74,6 +87,9 @@ const emit = defineEmits<{ close: [] }>();
 const taskStore = useTaskStore();
 const { perform } = useUndoAction();
 
+const titleEditor = ref<InstanceType<typeof TiptapEditor> | null>(null);
+const descEditor = ref<InstanceType<typeof TiptapEditor> | null>(null);
+
 const statuses: TaskStatus[] = ['todo', 'in-progress', 'done'];
 const priorities: TaskPriority[] = ['low', 'medium', 'high'];
 const statusLabels: Record<TaskStatus, string> = {
@@ -93,6 +109,53 @@ const localDueDateStr = computed(() => {
   const d = new Date(localDueDate.value);
   return d.toISOString().split('T')[0]!;
 });
+
+const fieldCount = 5;
+const editorRefs: Record<number, typeof titleEditor> = { 0: titleEditor, 4: descEditor };
+
+function handleTab(event: KeyboardEvent) {
+  if (event.key !== 'Tab') return;
+  if (!(event.currentTarget instanceof HTMLElement)) return;
+  const panel = event.currentTarget;
+  const fields = panel.querySelectorAll('[data-field-index]');
+  if (!fields.length) return;
+
+  event.preventDefault();
+  const active = document.activeElement;
+  const currentField = active?.closest('[data-field-index]');
+  const currentIdx = currentField instanceof HTMLElement ? Number(currentField.dataset.fieldIndex) : -1;
+
+  let nextIdx: number;
+  if (event.shiftKey) {
+    nextIdx = currentIdx > 0 ? currentIdx - 1 : fieldCount - 1;
+  } else {
+    nextIdx = currentIdx < fieldCount - 1 ? currentIdx + 1 : 0;
+  }
+
+  const nextField = panel.querySelector<HTMLElement>(`[data-field-index="${nextIdx}"]`);
+  if (!nextField) return;
+
+  const editorRef = editorRefs[nextIdx];
+  if (editorRef?.value) {
+    editorRef.value.focus();
+  } else {
+    nextField.focus();
+  }
+}
+
+function handlePillKeys<T>(event: KeyboardEvent, options: T[], current: T, setter: (val: T) => void) {
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    event.preventDefault();
+    const idx = options.indexOf(current);
+    const next = options[(idx + 1) % options.length]!;
+    setter(next);
+  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const idx = options.indexOf(current);
+    const prev = options[(idx - 1 + options.length) % options.length]!;
+    setter(prev);
+  }
+}
 
 let saveTimeout: ReturnType<typeof setTimeout>;
 

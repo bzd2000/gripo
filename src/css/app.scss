@@ -289,6 +289,11 @@ h1, h2, h3, h4, h5, h6,
     background: var(--g-surface-hover);
   }
 
+  &.is-focused {
+    border-color: var(--g-border-bright);
+    box-shadow: inset 2px 0 0 var(--g-accent);
+  }
+
   &.is-done {
     opacity: 0.4;
 
@@ -854,6 +859,42 @@ code {
       }
     }
   }
+
+  &.has-toolbar .ProseMirror {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+}
+
+// ─── Editor Toolbar ─────────────────────────────────────────
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 3px 4px;
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
+  border-bottom: none;
+  border-radius: var(--g-radius) var(--g-radius) 0 0;
+
+  .q-btn {
+    color: var(--g-text-dim);
+
+    &:hover {
+      color: var(--g-text);
+    }
+
+    &.text-primary {
+      color: var(--g-accent) !important;
+    }
+  }
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--g-border);
+  margin: 0 4px;
+  flex-shrink: 0;
 }
 
 // ─── Scrollbar ──────────────────────────────────────────────

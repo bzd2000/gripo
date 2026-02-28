@@ -14,7 +14,10 @@
         v-for="item in sortedMinutes"
         :key="item.id!"
         class="item-card"
-        :class="{ 'is-active': selectedId === item.id }"
+        :class="{
+          'is-active': selectedId === item.id,
+          'is-focused': focusedId === item.id && selectedId !== item.id,
+        }"
         @click="toggleSelected(item.id!)"
       >
         <div style="display: flex; align-items: center; gap: 10px;">
@@ -42,18 +45,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useMinutesStore } from 'stores/minutes-store';
 import { storeToRefs } from 'pinia';
+import type { MeetingMinutes } from 'src/models/types';
 import MinutesDetail from 'components/MinutesDetail.vue';
+import { useListNavigation } from 'src/composables/useListNavigation';
 
-const props = defineProps<{ subjectId: number }>();
+const props = defineProps<{
+  subjectId: number;
+  isActive?: boolean;
+}>();
 
 const minutesStore = useMinutesStore();
 const { sortedMinutes } = storeToRefs(minutesStore);
 
 const selectedId = ref<number | undefined>();
 const newMinutesTitle = ref('');
+
+const isActiveRef = computed(() => props.isActive ?? true);
+
+const { focusedId } = useListNavigation({
+  items: sortedMinutes,
+  getId: (item: MeetingMinutes) => item.id!,
+  selectedId,
+  isActive: isActiveRef,
+});
 
 async function addMinutes() {
   const title = newMinutesTitle.value.trim();

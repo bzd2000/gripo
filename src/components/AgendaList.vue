@@ -17,6 +17,7 @@
         :class="{
           'is-active': selectedId === point.id,
           'is-done': point.resolved,
+          'is-focused': focusedId === point.id && selectedId !== point.id,
         }"
         @click="toggleSelected(point.id!)"
       >
@@ -51,19 +52,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAgendaStore } from 'stores/agenda-store';
 import { storeToRefs } from 'pinia';
 import type { AgendaPoint } from 'src/models/types';
 import AgendaDetail from 'components/AgendaDetail.vue';
+import { useListNavigation } from 'src/composables/useListNavigation';
 
-const props = defineProps<{ subjectId: number }>();
+const props = defineProps<{
+  subjectId: number;
+  isActive?: boolean;
+}>();
 
 const agendaStore = useAgendaStore();
 const { activePoints } = storeToRefs(agendaStore);
 
 const selectedId = ref<number | undefined>();
 const newPointTitle = ref('');
+
+const isActiveRef = computed(() => props.isActive ?? true);
+
+const { focusedId } = useListNavigation({
+  items: activePoints,
+  getId: (point: AgendaPoint) => point.id!,
+  selectedId,
+  isActive: isActiveRef,
+});
 
 async function addPoint() {
   const title = newPointTitle.value.trim();
