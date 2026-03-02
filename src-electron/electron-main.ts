@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url'
+import * as sqliteService from './sqlite-service.js';
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -29,6 +30,23 @@ async function createWindow() {
     },
   });
 
+  // --- SQLite backup init ---
+  let dbPath = sqliteService.getDbPath();
+  if (!dbPath) {
+    const result = dialog.showSaveDialogSync(mainWindow, {
+      title: 'Choose backup database location',
+      defaultPath: path.join(app.getPath('documents'), 'gripo-backup.db'),
+      filters: [{ name: 'SQLite Database', extensions: ['db'] }],
+    });
+    if (result) {
+      dbPath = result;
+      sqliteService.setDbPath(dbPath);
+    }
+  }
+  if (dbPath) {
+    sqliteService.init(dbPath);
+  }
+
   if (process.env.DEV) {
     await mainWindow.loadURL(process.env.APP_URL);
   } else {
@@ -51,6 +69,41 @@ async function createWindow() {
 }
 
 void app.whenReady().then(createWindow);
+
+// --- IPC handlers ---
+
+ipcMain.on('db:sync', (_event, payload) => {
+  sqliteService.sync(payload);
+});
+
+ipcMain.handle('db:restore', () => {
+  return sqliteService.restore();
+});
+
+ipcMain.handle('db:get-path', () => {
+  return sqliteService.getDbPath();
+});
+
+ipcMain.handle('db:set-path', (_event, newPath: string) => {
+  sqliteService.setDbPath(newPath);
+});
+
+ipcMain.handle('db:pick-path', async () => {
+  const result = await dialog.showSaveDialog({
+    title: 'Choose backup database location',
+    defaultPath: path.join(app.getPath('documents'), 'gripo-backup.db'),
+    filters: [{ name: 'SQLite Database', extensions: ['db'] }],
+  });
+  if (!result.canceled && result.filePath) {
+    sqliteService.setDbPath(result.filePath);
+    return result.filePath;
+  }
+  return null;
+});
+
+app.on('before-quit', () => {
+  sqliteService.close();
+});
 
 app.on('window-all-closed', () => {
   if (platform !== 'darwin') {
