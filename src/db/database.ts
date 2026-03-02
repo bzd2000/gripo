@@ -20,3 +20,46 @@ export class GripoDB extends Dexie {
 }
 
 export const db = new GripoDB();
+
+function registerSyncHooks() {
+  if (!window.electronAPI) return;
+
+  const tables = [
+    { name: 'subjects', table: db.subjects },
+    { name: 'tasks', table: db.tasks },
+    { name: 'agendaPoints', table: db.agendaPoints },
+    { name: 'meetingMinutes', table: db.meetingMinutes },
+  ] as const;
+
+  for (const { name, table } of tables) {
+    table.hook('creating', function (_primKey, obj) {
+      // obj.id may not be set yet for auto-increment; use onsuccess to get it
+      this.onsuccess = (id: number) => {
+        window.electronAPI!.dbSync({
+          table: name,
+          op: 'create',
+          data: { ...obj, id },
+        });
+      };
+    });
+
+    table.hook('updating', (modifications, primKey) => {
+      window.electronAPI!.dbSync({
+        table: name,
+        op: 'update',
+        id: primKey as number,
+        data: modifications as Record<string, unknown>,
+      });
+    });
+
+    table.hook('deleting', (primKey) => {
+      window.electronAPI!.dbSync({
+        table: name,
+        op: 'delete',
+        id: primKey as number,
+      });
+    });
+  }
+}
+
+registerSyncHooks();
