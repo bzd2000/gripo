@@ -897,6 +897,30 @@ code {
   flex-shrink: 0;
 }
 
+// --- Settings ---
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--g-border);
+
+  .setting-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--g-text);
+    min-width: 140px;
+  }
+
+  .setting-value {
+    flex: 1;
+    font-size: 0.78rem;
+    color: var(--g-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 // ─── Scrollbar ──────────────────────────────────────────────
 ::-webkit-scrollbar {
   width: 6px;

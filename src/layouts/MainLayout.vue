@@ -48,6 +48,14 @@
             <q-icon name="push_pin" size="xs" />
           </q-item-section>
         </q-item>
+
+        <q-separator />
+        <q-item clickable :to="{ name: 'settings' }" active-class="text-primary">
+          <q-item-section avatar>
+            <q-icon name="settings" />
+          </q-item-section>
+          <q-item-section>Settings</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
