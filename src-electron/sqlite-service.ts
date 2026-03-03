@@ -1,9 +1,10 @@
-import Database from 'better-sqlite3';
+import initSqlJs, { type Database } from 'sql.js';
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-let db: Database.Database | null = null;
+let db: Database | null = null;
+let currentDbPath: string | null = null;
 
 const configPath = path.join(app.getPath('userData'), 'config.json');
 
@@ -25,19 +26,32 @@ export function getDbPath(): string | undefined {
   return readConfig().dbPath;
 }
 
-export function setDbPath(dbPath: string) {
+export async function setDbPath(dbPath: string) {
   close();
   writeConfig({ ...readConfig(), dbPath });
-  init(dbPath);
+  await init(dbPath);
 }
 
 // --- Init ---
 
-export function init(dbPath: string) {
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
+function save() {
+  if (!db || !currentDbPath) return;
+  const data = db.export();
+  fs.writeFileSync(currentDbPath, Buffer.from(data));
+}
 
-  db.exec(`
+export async function init(dbPath: string) {
+  const SQL = await initSqlJs();
+
+  if (fs.existsSync(dbPath)) {
+    const fileBuffer = fs.readFileSync(dbPath);
+    db = new SQL.Database(fileBuffer);
+  } else {
+    db = new SQL.Database();
+  }
+  currentDbPath = dbPath;
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS subjects (
       id INTEGER PRIMARY KEY,
       name TEXT, type TEXT, color TEXT,
@@ -65,11 +79,17 @@ export function init(dbPath: string) {
       createdAt TEXT, updatedAt TEXT
     );
   `);
+
+  save();
 }
 
 export function close() {
-  db?.close();
-  db = null;
+  if (db) {
+    save();
+    db.close();
+    db = null;
+    currentDbPath = null;
+  }
 }
 
 // --- Sync ---
@@ -118,10 +138,10 @@ export function sync(payload: SyncPayload) {
       const keys = Object.keys(data).filter((k) => allowedCols.includes(k));
       if (keys.length === 0) return;
       const placeholders = keys.map(() => '?').join(', ');
-      const stmt = db.prepare(
-        `INSERT OR REPLACE INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`
+      db.run(
+        `INSERT OR REPLACE INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`,
+        keys.map((k) => data[k] as null | number | string),
       );
-      stmt.run(...keys.map((k) => data[k]));
     }
 
     if (payload.op === 'update' && payload.id != null && payload.data) {
@@ -129,15 +149,15 @@ export function sync(payload: SyncPayload) {
       const keys = Object.keys(data).filter((k) => allowedCols.includes(k));
       if (keys.length === 0) return;
       const sets = keys.map((k) => `${k} = ?`).join(', ');
-      const values = keys.map((k) => data[k]);
-      const stmt = db.prepare(`UPDATE ${table} SET ${sets} WHERE id = ?`);
-      stmt.run(...values, payload.id);
+      const values = keys.map((k) => data[k] as null | number | string);
+      db.run(`UPDATE ${table} SET ${sets} WHERE id = ?`, [...values, payload.id]);
     }
 
     if (payload.op === 'delete' && payload.id != null) {
-      const stmt = db.prepare(`DELETE FROM ${table} WHERE id = ?`);
-      stmt.run(payload.id);
+      db.run(`DELETE FROM ${table} WHERE id = ?`, [payload.id]);
     }
+
+    save();
   } catch (err) {
     console.error('[sqlite-service] sync error:', err);
   }
@@ -145,11 +165,17 @@ export function sync(payload: SyncPayload) {
 
 // --- Restore ---
 
-export function restore(): Record<string, unknown[]> {
+export function restore(): Record<string, Record<string, unknown>[]> {
   if (!db) return {};
-  const result: Record<string, unknown[]> = {};
+  const result: Record<string, Record<string, unknown>[]> = {};
   for (const table of VALID_TABLES) {
-    result[table] = db.prepare(`SELECT * FROM ${table}`).all();
+    const stmt = db.prepare(`SELECT * FROM ${table}`);
+    const rows: Record<string, unknown>[] = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject() as Record<string, unknown>);
+    }
+    stmt.free();
+    result[table] = rows;
   }
   return result;
 }

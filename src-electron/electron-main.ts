@@ -39,11 +39,11 @@ async function createWindow() {
       filters: [{ name: 'SQLite Database', extensions: ['db'] }],
     });
     if (result) {
-      sqliteService.setDbPath(result); // setDbPath calls init() internally
+      await sqliteService.setDbPath(result); // setDbPath calls init() internally
       dbPath = result;
     }
   } else {
-    sqliteService.init(dbPath);
+    await sqliteService.init(dbPath);
   }
 
   if (process.env.DEV) {
@@ -83,8 +83,8 @@ ipcMain.handle('db:get-path', () => {
   return sqliteService.getDbPath();
 });
 
-ipcMain.handle('db:set-path', (_event, newPath: string) => {
-  sqliteService.setDbPath(newPath);
+ipcMain.handle('db:set-path', async (_event, newPath: string) => {
+  await sqliteService.setDbPath(newPath);
 });
 
 ipcMain.handle('db:pick-path', async () => {
@@ -94,7 +94,7 @@ ipcMain.handle('db:pick-path', async () => {
     filters: [{ name: 'SQLite Database', extensions: ['db'] }],
   });
   if (!result.canceled && result.filePath) {
-    sqliteService.setDbPath(result.filePath);
+    await sqliteService.setDbPath(result.filePath);
     return result.filePath;
   }
   return null;

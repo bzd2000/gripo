@@ -195,10 +195,7 @@ export default defineConfig((ctx) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/configuring-electron
     electron: {
-      extendElectronMainConf(esbuildConf) {
-        esbuildConf.external = esbuildConf.external || [];
-        esbuildConf.external.push('better-sqlite3');
-      },
+      // extendElectronMainConf (esbuildConf) {},
       // extendElectronPreloadConf (esbuildConf) {},
 
       // extendPackageJson (json) {},
