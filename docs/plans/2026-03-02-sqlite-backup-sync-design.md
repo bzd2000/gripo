@@ -33,7 +33,7 @@ Each Dexie hook fires with the specific record:
 
 - **`creating` hook** -> `INSERT INTO {table} (...) VALUES (...)`
 - **`updating` hook** -> `UPDATE {table} SET ... WHERE id = ?`
-- **`deleting` hook** -> `UPDATE {table} SET deleted = 1 WHERE id = ?` (soft delete)
+- **`deleting` hook** -> `DELETE FROM {table} WHERE id = ?` (hard delete — app uses soft deletes via `update` for tasks/agenda/minutes; the `deleting` hook only fires on true row removals)
 
 IPC payload shape:
 

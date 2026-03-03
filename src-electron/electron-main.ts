@@ -39,11 +39,10 @@ async function createWindow() {
       filters: [{ name: 'SQLite Database', extensions: ['db'] }],
     });
     if (result) {
+      sqliteService.setDbPath(result); // setDbPath calls init() internally
       dbPath = result;
-      sqliteService.setDbPath(dbPath);
     }
-  }
-  if (dbPath) {
+  } else {
     sqliteService.init(dbPath);
   }
 

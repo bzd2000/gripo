@@ -83,6 +83,13 @@ interface SyncPayload {
 
 const VALID_TABLES = ['subjects', 'tasks', 'agendaPoints', 'meetingMinutes'];
 
+const VALID_COLUMNS: Record<string, string[]> = {
+  subjects: ['id', 'name', 'type', 'color', 'pinned', 'archived', 'startDate', 'endDate', 'createdAt', 'updatedAt'],
+  tasks: ['id', 'subjectId', 'title', 'description', 'status', 'priority', 'dueDate', 'deleted', 'createdAt', 'updatedAt'],
+  agendaPoints: ['id', 'subjectId', 'title', 'content', 'resolved', 'deleted', 'createdAt', 'updatedAt'],
+  meetingMinutes: ['id', 'subjectId', 'title', 'content', 'date', 'deleted', 'createdAt', 'updatedAt'],
+};
+
 function serializeValue(val: unknown): unknown {
   if (val instanceof Date) return val.toISOString();
   if (typeof val === 'boolean') return val ? 1 : 0;
@@ -102,28 +109,37 @@ export function sync(payload: SyncPayload) {
   if (!VALID_TABLES.includes(payload.table)) return;
 
   const table = payload.table;
+  const allowedCols = VALID_COLUMNS[table];
+  if (!allowedCols) return;
 
-  if (payload.op === 'create' && payload.data) {
-    const data = serializeRecord(payload.data);
-    const keys = Object.keys(data);
-    const placeholders = keys.map(() => '?').join(', ');
-    const stmt = db.prepare(
-      `INSERT OR REPLACE INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`
-    );
-    stmt.run(...keys.map((k) => data[k]));
-  }
+  try {
+    if (payload.op === 'create' && payload.data) {
+      const data = serializeRecord(payload.data);
+      const keys = Object.keys(data).filter((k) => allowedCols.includes(k));
+      if (keys.length === 0) return;
+      const placeholders = keys.map(() => '?').join(', ');
+      const stmt = db.prepare(
+        `INSERT OR REPLACE INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`
+      );
+      stmt.run(...keys.map((k) => data[k]));
+    }
 
-  if (payload.op === 'update' && payload.id != null && payload.data) {
-    const data = serializeRecord(payload.data);
-    const sets = Object.keys(data).map((k) => `${k} = ?`).join(', ');
-    const values = Object.values(data);
-    const stmt = db.prepare(`UPDATE ${table} SET ${sets} WHERE id = ?`);
-    stmt.run(...values, payload.id);
-  }
+    if (payload.op === 'update' && payload.id != null && payload.data) {
+      const data = serializeRecord(payload.data);
+      const keys = Object.keys(data).filter((k) => allowedCols.includes(k));
+      if (keys.length === 0) return;
+      const sets = keys.map((k) => `${k} = ?`).join(', ');
+      const values = keys.map((k) => data[k]);
+      const stmt = db.prepare(`UPDATE ${table} SET ${sets} WHERE id = ?`);
+      stmt.run(...values, payload.id);
+    }
 
-  if (payload.op === 'delete' && payload.id != null) {
-    const stmt = db.prepare(`DELETE FROM ${table} WHERE id = ?`);
-    stmt.run(payload.id);
+    if (payload.op === 'delete' && payload.id != null) {
+      const stmt = db.prepare(`DELETE FROM ${table} WHERE id = ?`);
+      stmt.run(payload.id);
+    }
+  } catch (err) {
+    console.error('[sqlite-service] sync error:', err);
   }
 }
 

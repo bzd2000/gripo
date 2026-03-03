@@ -21,6 +21,10 @@ export class GripoDB extends Dexie {
 
 export const db = new GripoDB();
 
+let syncPaused = false;
+export function pauseSync() { syncPaused = true; }
+export function resumeSync() { syncPaused = false; }
+
 function registerSyncHooks() {
   if (!window.electronAPI) return;
 
@@ -33,6 +37,7 @@ function registerSyncHooks() {
 
   for (const { name, table } of tables) {
     table.hook('creating', function (_primKey, obj) {
+      if (syncPaused) return;
       // obj.id may not be set yet for auto-increment; use onsuccess to get it
       this.onsuccess = (id: number) => {
         window.electronAPI!.dbSync({
@@ -44,6 +49,7 @@ function registerSyncHooks() {
     });
 
     table.hook('updating', (modifications, primKey) => {
+      if (syncPaused) return;
       window.electronAPI!.dbSync({
         table: name,
         op: 'update',
@@ -53,6 +59,7 @@ function registerSyncHooks() {
     });
 
     table.hook('deleting', (primKey) => {
+      if (syncPaused) return;
       window.electronAPI!.dbSync({
         table: name,
         op: 'delete',

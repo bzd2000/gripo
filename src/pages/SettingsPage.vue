@@ -61,7 +61,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { db } from 'src/db/database';
+import { db, pauseSync, resumeSync } from 'src/db/database';
 
 const hasElectron = ref(!!window.electronAPI);
 const dbPath = ref<string | undefined>();
@@ -91,17 +91,22 @@ async function doRestore() {
 
   const data = await window.electronAPI.dbRestore();
 
-  await db.transaction('rw', [db.subjects, db.tasks, db.agendaPoints, db.meetingMinutes], async () => {
-    await db.subjects.clear();
-    await db.tasks.clear();
-    await db.agendaPoints.clear();
-    await db.meetingMinutes.clear();
+  pauseSync();
+  try {
+    await db.transaction('rw', [db.subjects, db.tasks, db.agendaPoints, db.meetingMinutes], async () => {
+      await db.subjects.clear();
+      await db.tasks.clear();
+      await db.agendaPoints.clear();
+      await db.meetingMinutes.clear();
 
-    if (data.subjects?.length) await db.subjects.bulkAdd(data.subjects as never[]);
-    if (data.tasks?.length) await db.tasks.bulkAdd(data.tasks as never[]);
-    if (data.agendaPoints?.length) await db.agendaPoints.bulkAdd(data.agendaPoints as never[]);
-    if (data.meetingMinutes?.length) await db.meetingMinutes.bulkAdd(data.meetingMinutes as never[]);
-  });
+      if (data.subjects?.length) await db.subjects.bulkAdd(data.subjects as never[]);
+      if (data.tasks?.length) await db.tasks.bulkAdd(data.tasks as never[]);
+      if (data.agendaPoints?.length) await db.agendaPoints.bulkAdd(data.agendaPoints as never[]);
+      if (data.meetingMinutes?.length) await db.meetingMinutes.bulkAdd(data.meetingMinutes as never[]);
+    });
+  } finally {
+    resumeSync();
+  }
 
   window.location.reload();
 }
