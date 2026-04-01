@@ -1,0 +1,120 @@
+<h2>Data Entity Model</h2>
+<p class="subtitle">All entities use soft deletes (deleted_at). Subjects are the primary organizing unit.</p>
+
+<div style="display: flex; flex-direction: column; gap: 24px; max-width: 900px; margin: 0 auto;">
+
+  <!-- Subject - central entity -->
+  <div style="background: #1a1a2e; border: 2px solid #e94560; border-radius: 12px; padding: 20px;">
+    <h3 style="color: #e94560; margin: 0 0 12px 0;">subjects</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 16px; font-family: monospace; font-size: 13px;">
+      <span style="color: #ffd700;">id TEXT PK</span>
+      <span style="color: #aaa;">name TEXT NOT NULL</span>
+      <span style="color: #aaa;">pinned INTEGER (0)</span>
+      <span style="color: #aaa;">archived INTEGER (0)</span>
+      <span style="color: #aaa;">color TEXT</span>
+      <span style="color: #aaa;">created_at TEXT</span>
+      <span style="color: #e94560;">deleted_at TEXT</span>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #666; font-size: 14px;">
+    &#9660; one-to-many (subject_id FK) &#9660;
+  </div>
+
+  <!-- Child entities in a grid -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <!-- Tasks -->
+    <div style="background: #1a1a2e; border: 2px solid #0f3460; border-radius: 12px; padding: 16px;">
+      <h3 style="color: #4ea8de; margin: 0 0 10px 0;">tasks</h3>
+      <div style="display: flex; flex-direction: column; gap: 3px; font-family: monospace; font-size: 12px;">
+        <span style="color: #ffd700;">id TEXT PK</span>
+        <span style="color: #4ea8de;">subject_id TEXT FK</span>
+        <span style="color: #aaa;">text TEXT NOT NULL</span>
+        <span style="color: #aaa;">priority TEXT</span>
+        <span style="color: #888; font-size: 11px;">  (must|should|if-time)</span>
+        <span style="color: #aaa;">status TEXT</span>
+        <span style="color: #888; font-size: 11px;">  (todo|in-progress|done|blocked)</span>
+        <span style="color: #aaa;">category TEXT</span>
+        <span style="color: #888; font-size: 11px;">  (delivery|admin|people|strategy|meeting|other)</span>
+        <span style="color: #aaa;">day TEXT</span>
+        <span style="color: #888; font-size: 11px;">  (mon|tue|wed|thu|fri|anytime)</span>
+        <span style="color: #aaa;">today INTEGER (0)</span>
+        <span style="color: #aaa;">created_at TEXT</span>
+        <span style="color: #aaa;">completed_at TEXT</span>
+        <span style="color: #e94560;">deleted_at TEXT</span>
+      </div>
+    </div>
+
+    <!-- Open Points -->
+    <div style="background: #1a1a2e; border: 2px solid #0f3460; border-radius: 12px; padding: 16px;">
+      <h3 style="color: #4ea8de; margin: 0 0 10px 0;">open_points</h3>
+      <div style="display: flex; flex-direction: column; gap: 3px; font-family: monospace; font-size: 12px;">
+        <span style="color: #ffd700;">id TEXT PK</span>
+        <span style="color: #4ea8de;">subject_id TEXT FK</span>
+        <span style="color: #aaa;">text TEXT NOT NULL</span>
+        <span style="color: #aaa;">context TEXT</span>
+        <span style="color: #aaa;">status TEXT</span>
+        <span style="color: #888; font-size: 11px;">  (open|resolved|parked)</span>
+        <span style="color: #aaa;">resolved_note TEXT</span>
+        <span style="color: #aaa;">raised_at TEXT</span>
+        <span style="color: #aaa;">resolved_at TEXT</span>
+        <span style="color: #e94560;">deleted_at TEXT</span>
+      </div>
+    </div>
+
+    <!-- Waiting -->
+    <div style="background: #1a1a2e; border: 2px solid #0f3460; border-radius: 12px; padding: 16px;">
+      <h3 style="color: #4ea8de; margin: 0 0 10px 0;">waiting</h3>
+      <div style="display: flex; flex-direction: column; gap: 3px; font-family: monospace; font-size: 12px;">
+        <span style="color: #ffd700;">id TEXT PK</span>
+        <span style="color: #4ea8de;">subject_id TEXT FK</span>
+        <span style="color: #aaa;">text TEXT NOT NULL</span>
+        <span style="color: #aaa;">owner TEXT NOT NULL</span>
+        <span style="color: #aaa;">asked_on TEXT</span>
+        <span style="color: #aaa;">due_by TEXT</span>
+        <span style="color: #aaa;">status TEXT</span>
+        <span style="color: #888; font-size: 11px;">  (waiting|received|overdue|cancelled)</span>
+        <span style="color: #aaa;">notes TEXT</span>
+        <span style="color: #e94560;">deleted_at TEXT</span>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div style="background: #1a1a2e; border: 2px solid #0f3460; border-radius: 12px; padding: 16px;">
+      <h3 style="color: #4ea8de; margin: 0 0 10px 0;">notes</h3>
+      <div style="display: flex; flex-direction: column; gap: 3px; font-family: monospace; font-size: 12px;">
+        <span style="color: #ffd700;">id TEXT PK</span>
+        <span style="color: #4ea8de;">subject_id TEXT FK</span>
+        <span style="color: #aaa;">content TEXT NOT NULL</span>
+        <span style="color: #888; font-size: 11px;">  (markdown format)</span>
+        <span style="color: #aaa;">created_at TEXT</span>
+        <span style="color: #aaa;">updated_at TEXT</span>
+        <span style="color: #e94560;">deleted_at TEXT</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Meta table - standalone -->
+  <div style="display: flex; justify-content: center;">
+    <div style="background: #1a1a2e; border: 2px solid #533483; border-radius: 12px; padding: 16px; width: 300px;">
+      <h3 style="color: #b388ff; margin: 0 0 10px 0;">meta</h3>
+      <div style="display: flex; flex-direction: column; gap: 3px; font-family: monospace; font-size: 12px;">
+        <span style="color: #ffd700;">key TEXT PK</span>
+        <span style="color: #aaa;">value TEXT NOT NULL</span>
+      </div>
+      <p style="color: #666; font-size: 11px; margin: 8px 0 0 0;">Stores app state (e.g. week_of for rollover)</p>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div style="display: flex; gap: 24px; justify-content: center; font-size: 12px; color: #888; margin-top: 8px;">
+    <span><span style="color: #ffd700;">&#9632;</span> Primary Key</span>
+    <span><span style="color: #4ea8de;">&#9632;</span> Foreign Key</span>
+    <span><span style="color: #e94560;">&#9632;</span> Soft Delete</span>
+    <span><span style="color: #aaa;">&#9632;</span> Column</span>
+  </div>
+
+</div>
