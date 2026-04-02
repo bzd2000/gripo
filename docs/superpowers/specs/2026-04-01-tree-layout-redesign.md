@@ -131,6 +131,18 @@ The tree should preserve the current selection and expansion state across refres
 - `tracker.tcss` — updated for new layout, existing status/priority classes kept
 - All tests — unchanged (they test the DB layer)
 
+## Markdown Comments
+
+Tasks, follow-ups, and open points each get a `comment` TEXT field (nullable, markdown). This is a new DB column on each table (with migration).
+
+**Display:** When viewing an item's detail in the right pane, the comment is rendered as markdown (using Textual's `Markdown` widget) at the bottom of the pane.
+
+**Editing:** When editing an item, the comment field shows as a raw markdown `TextArea` (same as notes editing).
+
+**Notes:** Notes content is also rendered as markdown when viewing the notes list (preview), and as raw `TextArea` when editing.
+
+**Rule:** All markdown content is rendered via Textual's `Markdown` widget everywhere except in edit mode, where it shows as a raw `TextArea`.
+
 ## DateInput Widget
 
 A reusable `DateInput` widget for all date fields (task due date, follow-up due date, follow-up asked_on).
