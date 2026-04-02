@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import re
 
-from textual.app import ComposeResult
 from textual.widgets import Label, ListItem, ListView
 
 from tracker.db import Database
-from tracker.messages import DataChanged
+from tracker.messages import DataChanged, ShowContent
 from tracker.models import Note
-from tracker.screens.add_note import AddNoteScreen
 from tracker.screens.confirm import ConfirmScreen
-from tracker.screens.edit_note import EditNoteScreen
 
 _MD_STRIP_RE = re.compile(r"[#*_`~\[\]>]")
 
@@ -85,28 +82,13 @@ class NotesList(ListView):
     # ------------------------------------------------------------------
 
     def action_add_note(self) -> None:
-        def _on_result(content: str | None) -> None:
-            if content:
-                self._db.add_note(subject_id=self._subject_id, content=content)
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Note added")
-
-        self.app.push_screen(AddNoteScreen(), _on_result)
+        self.post_message(ShowContent(content_type="note_editor", data={"subject_id": self._subject_id}))
 
     def action_edit_note(self) -> None:
         note = self._highlighted_note()
         if not note:
             return
-
-        def _on_result(content: str | None) -> None:
-            if content:
-                self._db.update_note(note.id, content=content)
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Note updated")
-
-        self.app.push_screen(EditNoteScreen(note), _on_result)
+        self.post_message(ShowContent(content_type="note_editor", data={"subject_id": self._subject_id, "note_id": note.id}))
 
     def action_delete_note(self) -> None:
         note = self._highlighted_note()
