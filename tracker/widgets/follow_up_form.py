@@ -6,7 +6,7 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Input, Label, TextArea
 
 from tracker.db import Database
@@ -14,7 +14,7 @@ from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 from tracker.widgets.date_input import DateInput
 
 
-class FollowUpForm(VerticalScroll):
+class FollowUpForm(Vertical):
     """Inline form for adding or editing a follow-up."""
 
     BINDINGS = [

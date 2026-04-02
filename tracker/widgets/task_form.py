@@ -6,7 +6,7 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Input, Label, Select, TextArea
 
 from tracker.db import Database
@@ -29,7 +29,7 @@ _CATEGORY_OPTIONS = [
 ]
 
 
-class TaskForm(VerticalScroll):
+class TaskForm(Vertical):
     """Inline form for adding or editing a task."""
 
     BINDINGS = [
