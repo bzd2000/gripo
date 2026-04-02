@@ -131,8 +131,22 @@ The tree should preserve the current selection and expansion state across refres
 - `tracker.tcss` — updated for new layout, existing status/priority classes kept
 - All tests — unchanged (they test the DB layer)
 
+## DateInput Widget
+
+A reusable `DateInput` widget for all date fields (task due date, follow-up due date, follow-up asked_on).
+
+**Behavior:**
+- Pre-filled with today's date (YYYY-MM-DD)
+- Left/Right arrow: decrease/increase by 1 day
+- Up/Down arrow: decrease/increase by 1 month
+- Still editable as text (type a date directly)
+- `Delete` or `Backspace` on empty clears to None (for optional dates)
+
+Used in: task form, follow-up form.
+
 ## New Files
 
+- `tracker/widgets/date_input.py` — `DateInput` widget
 - `tracker/widgets/nav_tree.py` — `NavTree(Tree)` widget
 - `tracker/widgets/content_area.py` — `ContentArea` container that swaps child widgets
 - `tracker/widgets/subject_overview.py` — Subject dashboard widget
