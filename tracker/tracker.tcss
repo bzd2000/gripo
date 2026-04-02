@@ -122,27 +122,6 @@ ContentArea > * {
     padding: 0 1;
 }
 
-.form-container Input {
-    height: 1;
-    margin: 0;
-}
-
-.form-container Select {
-    height: 1;
-    margin: 0;
-}
-
-.form-container .comment-area {
-    height: 1fr;
-    margin: 0;
-}
-
-.form-container TextArea {
-    height: auto;
-    max-height: 6;
-    margin: 0;
-}
-
 .form-container .form-title {
     text-style: bold;
     height: 1;
@@ -151,6 +130,10 @@ ContentArea > * {
 .form-container .field-label {
     color: $text-muted;
     height: 1;
+}
+
+.form-container .comment-area {
+    height: 1fr;
 }
 
 .form-row {
