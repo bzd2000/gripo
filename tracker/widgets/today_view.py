@@ -7,7 +7,7 @@ from textual.containers import Vertical
 from textual.widgets import Label, ListItem, ListView, Static
 
 from tracker.db import Database
-from tracker.messages import DataChanged
+from tracker.messages import DataChanged, ShowContent
 from tracker.models import Task
 
 _STATUS_ICON = {
@@ -131,15 +131,13 @@ class TodayView(Vertical):
         self.notify(f"Priority: {new_priority}")
 
     def action_open_subject(self) -> None:
-        from tracker.screens.subject_detail import SubjectDetailScreen
-
         list_view = self.query_one("#today-list", ListView)
         if list_view.highlighted_child is None:
             return
         subject_id = getattr(list_view.highlighted_child, "_subject_id", None)
         if not subject_id:
             return
-        self.app.push_screen(SubjectDetailScreen(self._db, subject_id))
+        self.post_message(ShowContent(content_type="subject_overview", data={"subject_id": subject_id}))
 
     # ------------------------------------------------------------------
     # External refresh (called by app after DataChanged)
