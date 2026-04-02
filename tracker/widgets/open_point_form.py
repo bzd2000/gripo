@@ -6,15 +6,14 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
-from textual.widget import Widget
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Input, Label, TextArea
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 
 
-class OpenPointForm(Widget):
+class OpenPointForm(VerticalScroll):
     """Inline form for adding or editing an open point."""
 
     BINDINGS = [
@@ -44,20 +43,19 @@ class OpenPointForm(Widget):
         initial_resolved_note = self._point.resolved_note or "" if self._point else ""
         is_resolved = self._point.status == "resolved" if self._point else False
 
-        with Vertical(classes="form-container"):
-            yield Label(title, classes="form-title")
-            with Horizontal(classes="form-row"):
-                with Vertical():
-                    yield Label("Text", classes="field-label")
-                    yield Input(value=initial_text, placeholder="Open point text", id="op-text-input")
-                with Vertical():
-                    yield Label("Context", classes="field-label")
-                    yield Input(value=initial_context, placeholder="Context (optional)", id="op-context-input")
-            if is_resolved:
-                yield Label("Resolution note", classes="field-label")
-                yield Input(value=initial_resolved_note, placeholder="Resolution note", id="op-resolved-note-input")
-            yield Label("Comment", classes="field-label")
-            yield TextArea(text=initial_comment, language="markdown", id="op-comment-area", classes="comment-area")
+        yield Label(title, classes="form-title")
+        with Horizontal(classes="form-row"):
+            with Vertical():
+                yield Label("Text", classes="field-label")
+                yield Input(value=initial_text, placeholder="Open point text", id="op-text-input")
+            with Vertical():
+                yield Label("Context", classes="field-label")
+                yield Input(value=initial_context, placeholder="Context (optional)", id="op-context-input")
+        if is_resolved:
+            yield Label("Resolution note", classes="field-label")
+            yield Input(value=initial_resolved_note, placeholder="Resolution note", id="op-resolved-note-input")
+        yield Label("Comment", classes="field-label")
+        yield TextArea(text=initial_comment, language="markdown", id="op-comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#op-text-input", Input).focus()

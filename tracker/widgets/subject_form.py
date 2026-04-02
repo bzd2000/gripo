@@ -5,14 +5,13 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.widget import Widget
 from textual.widgets import Input, Label
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 
 
-class SubjectForm(Widget):
+class SubjectForm(Vertical):
     """Inline form for adding a new subject."""
 
     BINDINGS = [
@@ -24,9 +23,8 @@ class SubjectForm(Widget):
         self._db = db
 
     def compose(self) -> ComposeResult:
-        with Vertical():
-            yield Label("New Subject")
-            yield Input(placeholder="Subject name", id="subject-name-input")
+        yield Label("New Subject")
+        yield Input(placeholder="Subject name", id="subject-name-input")
 
     def on_mount(self) -> None:
         self.query_one("#subject-name-input", Input).focus()

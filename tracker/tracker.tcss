@@ -107,37 +107,28 @@ NavTree {
 
 ContentArea {
     width: 3fr;
-    height: 1fr;
+    height: 100%;
     padding: 1 2;
 }
 
 ContentArea > * {
-    height: 1fr;
+    height: 100%;
 }
 
 /* ── Form styles ─────────────────────────────────────────────────────── */
 
-TaskForm, OpenPointForm, FollowUpForm, NoteEditor, SubjectForm {
-    height: 1fr;
-    layout: vertical;
-}
-
-.form-container {
-    height: 1fr;
-    padding: 0 1;
-}
-
-.form-container .form-title {
+.form-title {
     text-style: bold;
-    height: 1;
 }
 
-.form-container .field-label {
+.field-label {
     color: $text-muted;
-    height: 1;
 }
 
-.form-container .comment-area {
+TaskForm TextArea,
+OpenPointForm TextArea,
+FollowUpForm TextArea,
+NoteEditor TextArea {
     height: 1fr;
 }
 

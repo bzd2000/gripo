@@ -7,14 +7,13 @@ from typing import Optional
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.widget import Widget
 from textual.widgets import Label, TextArea
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 
 
-class NoteEditor(Widget):
+class NoteEditor(Vertical):
     """Inline editor for adding or editing a note."""
 
     BINDINGS = [
@@ -38,14 +37,12 @@ class NoteEditor(Widget):
         title = "Edit Note" if self._note else "New Note"
         initial_content = self._note.content if self._note else ""
 
-        with Vertical(classes="form-container"):
-            yield Label(title, classes="form-title")
-            yield TextArea(
-                text=initial_content,
-                language="markdown",
-                id="note-content-area",
-                classes="comment-area",
-            )
+        yield Label(title, classes="form-title")
+        yield TextArea(
+            text=initial_content,
+            language="markdown",
+            id="note-content-area",
+        )
 
     def on_mount(self) -> None:
         self.query_one("#note-content-area", TextArea).focus()

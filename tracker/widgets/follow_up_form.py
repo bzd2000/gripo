@@ -6,8 +6,7 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
-from textual.widget import Widget
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Input, Label, TextArea
 
 from tracker.db import Database
@@ -15,7 +14,7 @@ from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 from tracker.widgets.date_input import DateInput
 
 
-class FollowUpForm(Widget):
+class FollowUpForm(VerticalScroll):
     """Inline form for adding or editing a follow-up."""
 
     BINDINGS = [
@@ -52,26 +51,25 @@ class FollowUpForm(Widget):
             initial_due_by = None  # DateInput defaults to today
             initial_asked_on = None
 
-        with Vertical(classes="form-container"):
-            yield Label(title, classes="form-title")
-            with Horizontal(classes="form-row"):
-                with Vertical():
-                    yield Label("What", classes="field-label")
-                    yield Input(value=initial_text, placeholder="What are you waiting for?", id="fu-text-input")
-                with Vertical():
-                    yield Label("Owner", classes="field-label")
-                    yield Input(value=initial_owner, placeholder="Who?", id="fu-owner-input")
-            with Horizontal(classes="form-row"):
-                with Vertical():
-                    yield Label("Due by", classes="field-label")
-                    yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
-                with Vertical():
-                    yield Label("Asked on", classes="field-label")
-                    yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
-            yield Label("Notes", classes="field-label")
-            yield TextArea(text=initial_notes, id="fu-notes-area")
-            yield Label("Comment", classes="field-label")
-            yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area", classes="comment-area")
+        yield Label(title, classes="form-title")
+        with Horizontal(classes="form-row"):
+            with Vertical():
+                yield Label("What", classes="field-label")
+                yield Input(value=initial_text, placeholder="What are you waiting for?", id="fu-text-input")
+            with Vertical():
+                yield Label("Owner", classes="field-label")
+                yield Input(value=initial_owner, placeholder="Who?", id="fu-owner-input")
+        with Horizontal(classes="form-row"):
+            with Vertical():
+                yield Label("Due by", classes="field-label")
+                yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
+            with Vertical():
+                yield Label("Asked on", classes="field-label")
+                yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
+        yield Label("Notes", classes="field-label")
+        yield TextArea(text=initial_notes, id="fu-notes-area")
+        yield Label("Comment", classes="field-label")
+        yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#fu-text-input", Input).focus()
