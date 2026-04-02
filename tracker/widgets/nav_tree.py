@@ -45,7 +45,7 @@ class NavTree(Tree):
     BINDINGS = [
         Binding("p", "toggle_pin", "Toggle pin"),
         Binding("x", "archive_subject", "Archive"),
-        Binding("a", "add_subject", "Add subject"),
+        Binding("a", "add", "Add"),
         Binding("A", "toggle_archived", "Toggle archived"),
     ]
 
@@ -340,8 +340,40 @@ class NavTree(Tree):
 
             self.app.push_screen(ConfirmScreen("Archive this subject?"), _on_confirm)
 
-    def action_add_subject(self) -> None:
-        self.post_message(ShowContent("subject_form", {}))
+    def action_add(self) -> None:
+        """Context-aware add: adds the right type based on current tree position."""
+        node = self.cursor_node
+        if not node or not node.data:
+            self.post_message(ShowContent("subject_form", {}))
+            return
+
+        node_type = node.data.get("type")
+        subject_id = node.data.get("subject_id")
+
+        # On a section node → add that type
+        if node_type == "task_section":
+            self.post_message(ShowContent("task_form", {"subject_id": subject_id}))
+        elif node_type == "open_points_section":
+            self.post_message(ShowContent("open_point_form", {"subject_id": subject_id}))
+        elif node_type == "follow_ups_section":
+            self.post_message(ShowContent("follow_up_form", {"subject_id": subject_id}))
+        elif node_type == "notes_section":
+            self.post_message(ShowContent("note_editor", {"subject_id": subject_id}))
+        # On a leaf item → add same type as sibling
+        elif node_type == "task":
+            self.post_message(ShowContent("task_form", {"subject_id": subject_id}))
+        elif node_type == "open_point":
+            self.post_message(ShowContent("open_point_form", {"subject_id": subject_id}))
+        elif node_type == "follow_up":
+            self.post_message(ShowContent("follow_up_form", {"subject_id": subject_id}))
+        elif node_type == "note":
+            self.post_message(ShowContent("note_editor", {"subject_id": subject_id}))
+        # On a subject node → add subject
+        elif node_type == "subject":
+            self.post_message(ShowContent("subject_form", {}))
+        # Root level → add subject
+        else:
+            self.post_message(ShowContent("subject_form", {}))
 
     def action_toggle_archived(self) -> None:
         self._show_archived = not self._show_archived
