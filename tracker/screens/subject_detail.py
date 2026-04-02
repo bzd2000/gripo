@@ -10,16 +10,14 @@ from textual.containers import ScrollableContainer
 
 from tracker.db import Database
 from tracker.messages import DataChanged
+from tracker.widgets.follow_ups_list import FollowUpsList
 from tracker.widgets.notes_list import NotesList
+from tracker.widgets.open_points_list import OpenPointsList
 from tracker.widgets.task_list import TaskList
 
 
 class SubjectDetailScreen(Screen):
-    """Detail screen for a single subject.
-
-    Shows tasks (functional), and placeholder sections for open points,
-    follow-ups, and notes.
-    """
+    """Detail screen for a single subject."""
 
     BINDINGS = [
         Binding("escape", "pop_screen", "Back"),
@@ -35,7 +33,8 @@ class SubjectDetailScreen(Screen):
         self._subject_id = subject_id
 
     def _task_count(self) -> int:
-        return len(self._db.list_tasks(self._subject_id))
+        tasks = self._db.list_tasks(self._subject_id)
+        return sum(1 for t in tasks if t.status not in ("done",))
 
     def _subject_label(self) -> str:
         subject = self._db.get_subject(self._subject_id)
@@ -50,17 +49,33 @@ class SubjectDetailScreen(Screen):
         with ScrollableContainer():
             with Collapsible(title=self._tasks_title(), id="tasks-collapsible"):
                 yield TaskList(self._db, self._subject_id)
-            with Collapsible(title="Open Points", id="open-points-collapsible"):
-                yield Label("No open points yet.", classes="empty-state")
-            with Collapsible(title="Follow-Ups", id="follow-ups-collapsible"):
-                yield Label("No follow-ups yet.", classes="empty-state")
+            with Collapsible(title=self._open_points_title(), id="open-points-collapsible"):
+                yield OpenPointsList(self._db, self._subject_id)
+            with Collapsible(title=self._follow_ups_title(), id="follow-ups-collapsible"):
+                yield FollowUpsList(self._db, self._subject_id)
             with Collapsible(title=self._notes_title(), id="notes-collapsible"):
                 yield NotesList(self._db, self._subject_id)
         yield Footer()
 
     def _tasks_title(self) -> str:
         count = self._task_count()
-        return f"Tasks ({count})"
+        return f"Tasks ({count} open)"
+
+    def _open_points_count(self) -> int:
+        points = self._db.list_open_points(self._subject_id)
+        return sum(1 for p in points if p.status == "open")
+
+    def _open_points_title(self) -> str:
+        count = self._open_points_count()
+        return f"Open Points ({count} open)"
+
+    def _follow_ups_count(self) -> int:
+        fus = self._db.list_follow_ups(self._subject_id)
+        return sum(1 for fu in fus if fu.status == "waiting")
+
+    def _follow_ups_title(self) -> str:
+        count = self._follow_ups_count()
+        return f"Follow-Ups ({count} pending)"
 
     def _notes_count(self) -> int:
         return len(self._db.list_notes(self._subject_id))
@@ -70,11 +85,11 @@ class SubjectDetailScreen(Screen):
         return f"Notes ({count} entries)"
 
     def on_data_changed(self, message: DataChanged) -> None:
-        """Refresh collapsible titles when data changes."""
-        tasks_collapsible = self.query_one("#tasks-collapsible", Collapsible)
-        tasks_collapsible.title = self._tasks_title()
-        notes_collapsible = self.query_one("#notes-collapsible", Collapsible)
-        notes_collapsible.title = self._notes_title()
+        """Refresh all collapsible titles when data changes."""
+        self.query_one("#tasks-collapsible", Collapsible).title = self._tasks_title()
+        self.query_one("#open-points-collapsible", Collapsible).title = self._open_points_title()
+        self.query_one("#follow-ups-collapsible", Collapsible).title = self._follow_ups_title()
+        self.query_one("#notes-collapsible", Collapsible).title = self._notes_title()
 
     def action_pop_screen(self) -> None:
         self.app.pop_screen()
