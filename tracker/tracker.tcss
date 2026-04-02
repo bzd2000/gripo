@@ -91,3 +91,54 @@ ModalScreen {
 Collapsible {
     margin-bottom: 1;
 }
+
+/* ── Tree layout ────────────────────────────────────────────────────── */
+
+#app-layout {
+    layout: horizontal;
+    height: 1fr;
+}
+
+NavTree {
+    width: 1fr;
+    min-width: 20;
+    border-right: solid $primary;
+}
+
+ContentArea {
+    width: 3fr;
+    padding: 1 2;
+}
+
+/* ── Form styles ─────────────────────────────────────────────────────── */
+
+.form-container {
+    layout: vertical;
+    height: auto;
+}
+
+.form-container Input {
+    margin: 1 0;
+}
+
+.form-container TextArea {
+    min-height: 8;
+    margin: 1 0;
+}
+
+.form-container Select {
+    margin: 1 0;
+}
+
+.form-container Button {
+    margin: 1 1 0 0;
+}
+
+/* ── SubjectOverview section headers ─────────────────────────────────── */
+
+.section-header {
+    text-style: bold;
+    color: $primary;
+    padding: 0 0 0 1;
+    margin-top: 1;
+}
