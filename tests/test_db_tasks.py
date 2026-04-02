@@ -411,3 +411,56 @@ def test_today_counts_excludes_soft_deleted(db: Database) -> None:
 
     total, done, blocked = db.today_counts()
     assert total == 1
+
+
+# ---------------------------------------------------------------------------
+# comment round-trip
+# ---------------------------------------------------------------------------
+
+def test_add_task_with_comment(db: Database) -> None:
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="Has comment", comment="My note here")
+    task = db.get_task(tid)
+    assert task is not None
+    assert task.comment == "My note here"
+
+
+def test_add_task_without_comment_defaults_to_none(db: Database) -> None:
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="No comment")
+    task = db.get_task(tid)
+    assert task is not None
+    assert task.comment is None
+
+
+def test_update_task_comment(db: Database) -> None:
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="Will get comment")
+    db.update_task_comment(tid, "Added later")
+    task = db.get_task(tid)
+    assert task.comment == "Added later"
+
+
+def test_update_task_comment_to_none(db: Database) -> None:
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="Remove comment", comment="Remove me")
+    db.update_task_comment(tid, None)
+    task = db.get_task(tid)
+    assert task.comment is None
+
+
+def test_update_task_with_comment_sentinel(db: Database) -> None:
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="Sentinel test", comment="Original")
+    # update_task without comment kwarg should not change it
+    db.update_task(tid, text="Updated text")
+    task = db.get_task(tid)
+    assert task.comment == "Original"
+
+
+def test_update_task_comment_via_update_task(db: Database) -> None:
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="Via update_task")
+    db.update_task(tid, comment="Via sentinel path")
+    task = db.get_task(tid)
+    assert task.comment == "Via sentinel path"

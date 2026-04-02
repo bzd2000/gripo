@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     day           TEXT CHECK (day IN ('mon', 'tue', 'wed', 'thu', 'fri', 'anytime')),
     today         INTEGER NOT NULL DEFAULT 0,
     due_date      TEXT,
+    comment       TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at  TEXT,
     deleted_at    TEXT
@@ -48,6 +49,7 @@ CREATE TABLE IF NOT EXISTS open_points (
     context       TEXT,
     status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'parked')),
     resolved_note TEXT,
+    comment       TEXT,
     raised_at     TEXT NOT NULL DEFAULT (datetime('now')),
     resolved_at   TEXT,
     deleted_at    TEXT
@@ -62,6 +64,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
     due_by        TEXT,
     status        TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'received', 'overdue', 'cancelled')),
     notes         TEXT,
+    comment       TEXT,
     deleted_at    TEXT
 );
 
@@ -109,6 +112,18 @@ class Database:
         cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(tasks)").fetchall()]
         if "due_date" not in cols:
             self.conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT")
+        if "comment" not in cols:
+            self.conn.execute("ALTER TABLE tasks ADD COLUMN comment TEXT")
+
+        # Add comment column to open_points if missing
+        op_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(open_points)").fetchall()]
+        if "comment" not in op_cols:
+            self.conn.execute("ALTER TABLE open_points ADD COLUMN comment TEXT")
+
+        # Add comment column to follow_ups if missing
+        fu_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(follow_ups)").fetchall()]
+        if "comment" not in fu_cols:
+            self.conn.execute("ALTER TABLE follow_ups ADD COLUMN comment TEXT")
 
     # ------------------------------------------------------------------
     # Subject CRUD
@@ -216,12 +231,13 @@ class Database:
         day: Optional[str] = None,
         today: bool = False,
         due_date: Optional[str] = None,
+        comment: Optional[str] = None,
     ) -> str:
         task_id = _new_id()
         self.conn.execute(
-            """INSERT INTO tasks (id, subject_id, text, priority, status, category, day, today, due_date)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (task_id, subject_id, text, priority, status, category, day, int(today), due_date),
+            """INSERT INTO tasks (id, subject_id, text, priority, status, category, day, today, due_date, comment)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (task_id, subject_id, text, priority, status, category, day, int(today), due_date, comment),
         )
         self.conn.commit()
         return task_id
@@ -284,6 +300,13 @@ class Database:
         )
         self.conn.commit()
 
+    def update_task_comment(self, task_id: str, comment: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE tasks SET comment = ? WHERE id = ?",
+            (comment, task_id),
+        )
+        self.conn.commit()
+
     def update_task(
         self,
         task_id: str,
@@ -291,8 +314,9 @@ class Database:
         priority: Optional[str] = None,
         category: Optional[str] = None,
         due_date: object = _SENTINEL,
+        comment: object = _SENTINEL,
     ) -> None:
-        """Update text, priority, category, and/or due_date fields on a task."""
+        """Update text, priority, category, due_date, and/or comment fields on a task."""
         fields: list[str] = []
         values: list = []
         if text is not None:
@@ -307,6 +331,9 @@ class Database:
         if due_date is not _SENTINEL:
             fields.append("due_date = ?")
             values.append(due_date)
+        if comment is not _SENTINEL:
+            fields.append("comment = ?")
+            values.append(comment)
         if not fields:
             return
         values.append(task_id)
@@ -458,11 +485,12 @@ class Database:
         subject_id: str,
         text: str,
         context: Optional[str] = None,
+        comment: Optional[str] = None,
     ) -> str:
         point_id = _new_id()
         self.conn.execute(
-            "INSERT INTO open_points (id, subject_id, text, context) VALUES (?, ?, ?, ?)",
-            (point_id, subject_id, text, context),
+            "INSERT INTO open_points (id, subject_id, text, context, comment) VALUES (?, ?, ?, ?, ?)",
+            (point_id, subject_id, text, context, comment),
         )
         self.conn.commit()
         return point_id
@@ -519,6 +547,13 @@ class Database:
         )
         self.conn.commit()
 
+    def update_open_point_comment(self, point_id: str, comment: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE open_points SET comment = ? WHERE id = ?",
+            (comment, point_id),
+        )
+        self.conn.commit()
+
     def soft_delete_open_point(self, point_id: str) -> None:
         self.conn.execute(
             "UPDATE open_points SET deleted_at = ? WHERE id = ?",
@@ -536,11 +571,12 @@ class Database:
         text: str,
         owner: str,
         due_by: Optional[str] = None,
+        comment: Optional[str] = None,
     ) -> str:
         follow_up_id = _new_id()
         self.conn.execute(
-            "INSERT INTO follow_ups (id, subject_id, text, owner, due_by) VALUES (?, ?, ?, ?, ?)",
-            (follow_up_id, subject_id, text, owner, due_by),
+            "INSERT INTO follow_ups (id, subject_id, text, owner, due_by, comment) VALUES (?, ?, ?, ?, ?, ?)",
+            (follow_up_id, subject_id, text, owner, due_by, comment),
         )
         self.conn.commit()
         return follow_up_id
@@ -579,6 +615,13 @@ class Database:
         self.conn.execute(
             "UPDATE follow_ups SET notes = ? WHERE id = ?",
             (notes, follow_up_id),
+        )
+        self.conn.commit()
+
+    def update_follow_up_comment(self, follow_up_id: str, comment: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE follow_ups SET comment = ? WHERE id = ?",
+            (comment, follow_up_id),
         )
         self.conn.commit()
 

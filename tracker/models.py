@@ -52,6 +52,7 @@ class Task:
     day: Optional[str]
     today: bool
     due_date: Optional[str]
+    comment: Optional[str]
     created_at: str
     completed_at: Optional[str]
     deleted_at: Optional[str]
@@ -72,6 +73,7 @@ class Task:
             day=row["day"],
             today=bool(row["today"]),
             due_date=row["due_date"] if "due_date" in keys else None,
+            comment=row["comment"] if "comment" in keys else None,
             created_at=row["created_at"],
             completed_at=row["completed_at"],
             deleted_at=row["deleted_at"],
@@ -87,12 +89,14 @@ class OpenPoint:
     context: Optional[str]
     status: str
     resolved_note: Optional[str]
+    comment: Optional[str]
     raised_at: str
     resolved_at: Optional[str]
     deleted_at: Optional[str]
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "OpenPoint":
+        keys = row.keys()
         return cls(
             id=row["id"],
             subject_id=row["subject_id"],
@@ -100,6 +104,7 @@ class OpenPoint:
             context=row["context"],
             status=row["status"],
             resolved_note=row["resolved_note"],
+            comment=row["comment"] if "comment" in keys else None,
             raised_at=row["raised_at"],
             resolved_at=row["resolved_at"],
             deleted_at=row["deleted_at"],
@@ -116,10 +121,12 @@ class FollowUp:
     due_by: Optional[str]
     status: str
     notes: Optional[str]
+    comment: Optional[str]
     deleted_at: Optional[str]
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "FollowUp":
+        keys = row.keys()
         return cls(
             id=row["id"],
             subject_id=row["subject_id"],
@@ -129,6 +136,7 @@ class FollowUp:
             due_by=row["due_by"],
             status=row["status"],
             notes=row["notes"],
+            comment=row["comment"] if "comment" in keys else None,
             deleted_at=row["deleted_at"],
         )
 

@@ -238,3 +238,39 @@ def test_soft_delete_open_point_excludes_from_list(db: Database) -> None:
     db.soft_delete_open_point(pid)
     points = db.list_open_points(subject_id=sid)
     assert all(p.id != pid for p in points)
+
+
+# ---------------------------------------------------------------------------
+# comment round-trip
+# ---------------------------------------------------------------------------
+
+def test_add_open_point_with_comment(db: Database) -> None:
+    sid = _subject(db)
+    pid = db.add_open_point(subject_id=sid, text="With comment", comment="Context note")
+    point = db.get_open_point(pid)
+    assert point is not None
+    assert point.comment == "Context note"
+
+
+def test_add_open_point_without_comment_defaults_to_none(db: Database) -> None:
+    sid = _subject(db)
+    pid = db.add_open_point(subject_id=sid, text="No comment")
+    point = db.get_open_point(pid)
+    assert point is not None
+    assert point.comment is None
+
+
+def test_update_open_point_comment(db: Database) -> None:
+    sid = _subject(db)
+    pid = db.add_open_point(subject_id=sid, text="Will get comment")
+    db.update_open_point_comment(pid, "Added later")
+    point = db.get_open_point(pid)
+    assert point.comment == "Added later"
+
+
+def test_update_open_point_comment_to_none(db: Database) -> None:
+    sid = _subject(db)
+    pid = db.add_open_point(subject_id=sid, text="Remove comment", comment="Remove me")
+    db.update_open_point_comment(pid, None)
+    point = db.get_open_point(pid)
+    assert point.comment is None

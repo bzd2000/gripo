@@ -269,3 +269,39 @@ def test_soft_delete_follow_up_excludes_from_list(db: Database) -> None:
     db.soft_delete_follow_up(fid)
     follow_ups = db.list_follow_ups(subject_id=sid)
     assert all(f.id != fid for f in follow_ups)
+
+
+# ---------------------------------------------------------------------------
+# comment round-trip
+# ---------------------------------------------------------------------------
+
+def test_add_follow_up_with_comment(db: Database) -> None:
+    sid = _subject(db)
+    fid = db.add_follow_up(subject_id=sid, text="With comment", owner="Alice", comment="Note about this")
+    fu = db.get_follow_up(fid)
+    assert fu is not None
+    assert fu.comment == "Note about this"
+
+
+def test_add_follow_up_without_comment_defaults_to_none(db: Database) -> None:
+    sid = _subject(db)
+    fid = db.add_follow_up(subject_id=sid, text="No comment", owner="Bob")
+    fu = db.get_follow_up(fid)
+    assert fu is not None
+    assert fu.comment is None
+
+
+def test_update_follow_up_comment(db: Database) -> None:
+    sid = _subject(db)
+    fid = db.add_follow_up(subject_id=sid, text="Will get comment", owner="Carol")
+    db.update_follow_up_comment(fid, "Added later")
+    fu = db.get_follow_up(fid)
+    assert fu.comment == "Added later"
+
+
+def test_update_follow_up_comment_to_none(db: Database) -> None:
+    sid = _subject(db)
+    fid = db.add_follow_up(subject_id=sid, text="Remove comment", owner="Dave", comment="Remove me")
+    db.update_follow_up_comment(fid, None)
+    fu = db.get_follow_up(fid)
+    assert fu.comment is None
