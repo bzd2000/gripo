@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tracker"
+version = "0.1.0"
+description = "Terminal-based personal productivity TUI"
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=0.79.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+tt = "tracker.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tracker"]
