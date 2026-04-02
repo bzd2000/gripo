@@ -300,6 +300,38 @@ class Database:
         )
         self.conn.commit()
 
+    def search(self, query: str) -> List[dict]:
+        """Search across subjects, tasks, notes, open_points, follow_ups.
+
+        Returns list of dicts with keys: type, id, match_text, subject_id.
+        Case-insensitive LIKE match. Excludes soft-deleted records. Max 20 results.
+        """
+        like = f"%{query}%"
+        sql = """
+            SELECT 'subject' AS type, id, name AS match_text, id AS subject_id
+            FROM subjects
+            WHERE name LIKE ? AND deleted_at IS NULL
+            UNION ALL
+            SELECT 'task' AS type, id, text AS match_text, subject_id
+            FROM tasks
+            WHERE text LIKE ? AND deleted_at IS NULL
+            UNION ALL
+            SELECT 'note' AS type, id, content AS match_text, subject_id
+            FROM notes
+            WHERE content LIKE ? AND deleted_at IS NULL
+            UNION ALL
+            SELECT 'open_point' AS type, id, text AS match_text, subject_id
+            FROM open_points
+            WHERE text LIKE ? AND deleted_at IS NULL
+            UNION ALL
+            SELECT 'follow_up' AS type, id, text AS match_text, subject_id
+            FROM follow_ups
+            WHERE (text LIKE ? OR owner LIKE ?) AND deleted_at IS NULL
+            LIMIT 20
+        """
+        rows = self.conn.execute(sql, (like, like, like, like, like, like)).fetchall()
+        return [dict(row) for row in rows]
+
     def list_week_tasks(self) -> List[Task]:
         """Return week-assigned non-done tasks across all subjects, ordered by day then priority.
 

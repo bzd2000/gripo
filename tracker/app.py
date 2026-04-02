@@ -7,6 +7,7 @@ from textual.widgets import Footer, Header, Label, TabbedContent, TabPane
 
 from tracker.db import Database
 from tracker.messages import DataChanged
+from tracker.screens.search import SearchScreen
 from tracker.screens.subject_detail import SubjectDetailScreen
 from tracker.widgets.subjects_list import SubjectSelected, SubjectsList
 from tracker.widgets.today_view import TodayView
@@ -23,6 +24,7 @@ class TrackerApp(App):
 
     BINDINGS = [
         ("q", "quit", "Quit"),
+        ("/", "search", "Search"),
     ]
 
     def __init__(self) -> None:
@@ -42,6 +44,18 @@ class TrackerApp(App):
 
     def on_subject_selected(self, message: SubjectSelected) -> None:
         self.push_screen(SubjectDetailScreen(self.db, message.subject_id))
+
+    def action_search(self) -> None:
+        def _on_result(result: dict | None) -> None:
+            if result is None:
+                return
+            if result["type"] == "subject":
+                subject_id = result["id"]
+            else:
+                subject_id = result["subject_id"]
+            self.push_screen(SubjectDetailScreen(self.db, subject_id))
+
+        self.push_screen(SearchScreen(self.db), _on_result)
 
     def on_data_changed(self, message: DataChanged) -> None:
         """Update Today tab label and refresh TodayView when data changes."""
