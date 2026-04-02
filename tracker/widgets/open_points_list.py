@@ -5,11 +5,9 @@ from __future__ import annotations
 from textual.widgets import Label, ListItem, ListView
 
 from tracker.db import Database
-from tracker.messages import DataChanged
+from tracker.messages import DataChanged, ShowContent
 from tracker.models import OpenPoint
-from tracker.screens.add_open_point import AddOpenPointScreen
 from tracker.screens.confirm import ConfirmScreen
-from tracker.screens.resolve_point import ResolveScreen
 
 _STATUS_ICON = {
     "open": "?",
@@ -95,74 +93,25 @@ class OpenPointsList(ListView):
     # ------------------------------------------------------------------
 
     def action_add_point(self) -> None:
-        def _on_result(data) -> None:
-            if data:
-                self._db.add_open_point(
-                    subject_id=self._subject_id,
-                    text=data.text,
-                    context=data.context,
-                )
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Open point added")
-
-        self.app.push_screen(AddOpenPointScreen(), _on_result)
+        self.post_message(ShowContent(content_type="open_point_form", data={"subject_id": self._subject_id}))
 
     def action_edit_point(self) -> None:
         point = self._highlighted_point()
         if not point:
             return
-
-        def _on_result(data) -> None:
-            if data:
-                self._db.update_open_point_text(point.id, data.text)
-                self._db.update_open_point_context(point.id, data.context)
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Open point updated")
-
-        self.app.push_screen(
-            AddOpenPointScreen(
-                text=point.text,
-                context=point.context or "",
-            ),
-            _on_result,
-        )
+        self.post_message(ShowContent(content_type="open_point_form", data={"subject_id": self._subject_id, "point_id": point.id}))
 
     def action_edit_context(self) -> None:
         point = self._highlighted_point()
         if not point:
             return
-
-        def _on_result(data) -> None:
-            if data:
-                self._db.update_open_point_text(point.id, data.text)
-                self._db.update_open_point_context(point.id, data.context)
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Open point updated")
-
-        self.app.push_screen(
-            AddOpenPointScreen(
-                text=point.text,
-                context=point.context or "",
-            ),
-            _on_result,
-        )
+        self.post_message(ShowContent(content_type="open_point_form", data={"subject_id": self._subject_id, "point_id": point.id}))
 
     def action_resolve_point(self) -> None:
         point = self._highlighted_point()
         if not point:
             return
-
-        def _on_result(note: str | None) -> None:
-            if note:
-                self._db.resolve_open_point(point.id, note)
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Open point resolved")
-
-        self.app.push_screen(ResolveScreen(), _on_result)
+        self.post_message(ShowContent(content_type="open_point_form", data={"subject_id": self._subject_id, "point_id": point.id}))
 
     def action_cycle_status(self) -> None:
         point = self._highlighted_point()
