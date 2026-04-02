@@ -189,8 +189,11 @@ class Database:
                 )
 
     # ------------------------------------------------------------------
-    # Task stubs (needed for cascade tests and future tasks)
+    # Task CRUD
     # ------------------------------------------------------------------
+
+    def _now(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
 
     def add_task(
         self,
@@ -211,11 +214,91 @@ class Database:
         self.conn.commit()
         return task_id
 
+    def get_task(self, task_id: str) -> Optional[Task]:
+        row = self.conn.execute(
+            "SELECT * FROM tasks WHERE id = ?", (task_id,)
+        ).fetchone()
+        return Task.from_row(row) if row else None
+
     def list_tasks(self, subject_id: str) -> List[Task]:
-        rows = self.conn.execute(
-            "SELECT * FROM tasks WHERE subject_id = ?", (subject_id,)
-        ).fetchall()
+        """Return tasks for a subject, excluding soft-deleted.
+
+        Ordered by status (todo first, done last) then priority (must first).
+        """
+        _STATUS_ORDER = "CASE status WHEN 'todo' THEN 0 WHEN 'in-progress' THEN 1 WHEN 'blocked' THEN 2 WHEN 'done' THEN 3 ELSE 4 END"
+        _PRIORITY_ORDER = "CASE priority WHEN 'must' THEN 0 WHEN 'should' THEN 1 WHEN 'if-time' THEN 2 ELSE 3 END"
+        sql = f"""
+            SELECT * FROM tasks
+            WHERE subject_id = ? AND deleted_at IS NULL
+            ORDER BY {_STATUS_ORDER}, {_PRIORITY_ORDER}
+        """
+        rows = self.conn.execute(sql, (subject_id,)).fetchall()
         return [Task.from_row(row) for row in rows]
+
+    def update_task_status(self, task_id: str, status: str) -> None:
+        """Update task status, setting completed_at when done, clearing it otherwise."""
+        completed_at = self._now() if status == "done" else None
+        self.conn.execute(
+            "UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?",
+            (status, completed_at, task_id),
+        )
+        self.conn.commit()
+
+    def update_task_priority(self, task_id: str, priority: str) -> None:
+        self.conn.execute(
+            "UPDATE tasks SET priority = ? WHERE id = ?",
+            (priority, task_id),
+        )
+        self.conn.commit()
+
+    def toggle_today(self, task_id: str) -> None:
+        self.conn.execute(
+            "UPDATE tasks SET today = CASE WHEN today = 1 THEN 0 ELSE 1 END WHERE id = ?",
+            (task_id,),
+        )
+        self.conn.commit()
+
+    def update_task_day(self, task_id: str, day: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE tasks SET day = ? WHERE id = ?",
+            (day, task_id),
+        )
+        self.conn.commit()
+
+    def update_task(
+        self,
+        task_id: str,
+        text: Optional[str] = None,
+        priority: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> None:
+        """Update text, priority, and/or category fields on a task."""
+        fields: list[str] = []
+        values: list = []
+        if text is not None:
+            fields.append("text = ?")
+            values.append(text)
+        if priority is not None:
+            fields.append("priority = ?")
+            values.append(priority)
+        if category is not None:
+            fields.append("category = ?")
+            values.append(category)
+        if not fields:
+            return
+        values.append(task_id)
+        self.conn.execute(
+            f"UPDATE tasks SET {', '.join(fields)} WHERE id = ?",
+            values,
+        )
+        self.conn.commit()
+
+    def soft_delete_task(self, task_id: str) -> None:
+        self.conn.execute(
+            "UPDATE tasks SET deleted_at = ? WHERE id = ?",
+            (self._now(), task_id),
+        )
+        self.conn.commit()
 
     # ------------------------------------------------------------------
     # Note stubs (needed for cascade tests and future tasks)
