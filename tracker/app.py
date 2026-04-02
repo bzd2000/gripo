@@ -50,7 +50,16 @@ class TrackerApp(App):
         except Exception:
             pass
         # Show Today view initially
-        self.post_message(ShowContent(content_type="today", data={}))
+        self.query_one(ContentArea).on_show_content(
+            ShowContent(content_type="today", data={})
+        )
+
+    def on_show_content(self, message: ShowContent) -> None:
+        """Forward ShowContent to ContentArea (for messages that bubble past it)."""
+        try:
+            self.query_one(ContentArea).on_show_content(message)
+        except Exception:
+            pass
 
     def on_data_changed(self, message: DataChanged) -> None:
         """Refresh the nav tree when data changes."""
