@@ -95,6 +95,7 @@ class TaskForm(Widget):
                 text=initial_comment or "",
                 language="markdown",
                 id="task-comment-area",
+                classes="comment-area",
             )
 
     def on_mount(self) -> None:

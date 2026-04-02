@@ -57,7 +57,7 @@ class OpenPointForm(Widget):
                 yield Label("Resolution note", classes="field-label")
                 yield Input(value=initial_resolved_note, placeholder="Resolution note", id="op-resolved-note-input")
             yield Label("Comment", classes="field-label")
-            yield TextArea(text=initial_comment, language="markdown", id="op-comment-area")
+            yield TextArea(text=initial_comment, language="markdown", id="op-comment-area", classes="comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#op-text-input", Input).focus()

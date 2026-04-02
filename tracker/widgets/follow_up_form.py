@@ -71,7 +71,7 @@ class FollowUpForm(Widget):
             yield Label("Notes", classes="field-label")
             yield TextArea(text=initial_notes, id="fu-notes-area")
             yield Label("Comment", classes="field-label")
-            yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area")
+            yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area", classes="comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#fu-text-input", Input).focus()

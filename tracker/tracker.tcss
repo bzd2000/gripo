@@ -113,31 +113,38 @@ ContentArea {
 /* ── Form styles ─────────────────────────────────────────────────────── */
 
 .form-container {
-    height: auto;
+    height: 1fr;
     padding: 0 1;
 }
 
 .form-container Input {
-    height: 3;
+    height: 1;
+    margin: 0;
 }
 
 .form-container Select {
-    height: 3;
+    height: 1;
+    margin: 0;
+}
+
+.form-container .comment-area {
+    height: 1fr;
+    margin: 0;
 }
 
 .form-container TextArea {
-    min-height: 5;
-    max-height: 12;
+    height: auto;
+    max-height: 6;
+    margin: 0;
 }
 
 .form-container .form-title {
     text-style: bold;
-    margin-bottom: 1;
+    height: 1;
 }
 
 .form-container .field-label {
     color: $text-muted;
-    margin-top: 0;
     height: 1;
 }
 

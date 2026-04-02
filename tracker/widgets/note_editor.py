@@ -38,12 +38,13 @@ class NoteEditor(Widget):
         title = "Edit Note" if self._note else "New Note"
         initial_content = self._note.content if self._note else ""
 
-        with Vertical():
-            yield Label(title)
+        with Vertical(classes="form-container"):
+            yield Label(title, classes="form-title")
             yield TextArea(
                 text=initial_content,
                 language="markdown",
                 id="note-content-area",
+                classes="comment-area",
             )
 
     def on_mount(self) -> None:
