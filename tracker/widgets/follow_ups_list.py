@@ -154,7 +154,7 @@ class FollowUpsList(ListView):
                 self.post_message(DataChanged())
                 self.notify("Follow-up notes updated")
 
-        self.app.push_screen(AddNoteScreen(), _on_result)
+        self.app.push_screen(AddNoteScreen(initial_content=fu.notes or ""), _on_result)
 
     def action_delete_follow_up(self) -> None:
         fu = self._highlighted_follow_up()

@@ -45,6 +45,8 @@ class SubjectsList(ListView):
         parts = []
         if subject.open_tasks:
             parts.append(f"{subject.open_tasks}t")
+        if subject.open_points_count:
+            parts.append(f"{subject.open_points_count}op")
         if subject.follow_ups_count:
             parts.append(f"{subject.follow_ups_count}f")
         if subject.latest_note:

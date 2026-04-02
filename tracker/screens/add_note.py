@@ -29,10 +29,15 @@ class AddNoteScreen(ModalScreen["str | None"]):
     }
     """
 
+    def __init__(self, initial_content: str = "") -> None:
+        super().__init__()
+        self._initial_content = initial_content
+
     def compose(self) -> ComposeResult:
+        title = "Edit Note (Markdown)" if self._initial_content else "New Note (Markdown)"
         with Vertical(classes="modal-dialog"):
-            yield Label("New Note (Markdown)")
-            yield TextArea(language="markdown", id="note-area")
+            yield Label(title)
+            yield TextArea(self._initial_content, language="markdown", id="note-area")
             with Horizontal():
                 yield Button("Save", variant="primary", id="save-btn")
                 yield Button("Cancel", variant="default", id="cancel-btn")
