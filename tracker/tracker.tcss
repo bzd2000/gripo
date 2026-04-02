@@ -81,56 +81,38 @@ ModalScreen {
     width: 100%;
 }
 
-/* Subject header */
-.subject-header {
-    dock: top;
-    padding: 0 1;
-}
-
 /* Collapsible spacing */
 Collapsible {
     margin-bottom: 1;
 }
 
-/* ── Tree layout ────────────────────────────────────────────────────── */
+/* ── Main grid layout (following Textual combining_layouts pattern) ─── */
 
-#app-layout {
-    layout: horizontal;
-    height: 1fr;
+#app-grid {
+    layout: grid;
+    grid-size: 2;
+    grid-columns: 1fr 3fr;
+    grid-rows: 1fr;
 }
 
 NavTree {
-    width: 1fr;
-    min-width: 20;
+    width: 100%;
+    height: 100%;
     border-right: solid $primary;
 }
 
 ContentArea {
-    width: 3fr;
+    width: 100%;
     height: 100%;
     padding: 1 2;
 }
 
 ContentArea > * {
+    width: 100%;
     height: 100%;
 }
 
 /* ── Form styles ─────────────────────────────────────────────────────── */
-
-TaskForm > *,
-OpenPointForm > *,
-FollowUpForm > *,
-NoteEditor > *,
-SubjectForm > * {
-    height: auto;
-}
-
-TaskForm > TextArea,
-OpenPointForm > TextArea,
-FollowUpForm > TextArea,
-NoteEditor > TextArea {
-    height: 1fr;
-}
 
 .form-title {
     text-style: bold;
@@ -138,6 +120,14 @@ NoteEditor > TextArea {
 
 .field-label {
     color: $text-muted;
+}
+
+/* In forms, TextArea fills remaining vertical space */
+TaskForm > TextArea,
+OpenPointForm > TextArea,
+FollowUpForm > TextArea,
+NoteEditor > TextArea {
+    height: 1fr;
 }
 
 .form-row {

@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Container
 from textual.widgets import Footer, Header
 
 from tracker.db import Database
@@ -35,7 +35,7 @@ class TrackerApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with Horizontal(id="app-layout"):
+        with Container(id="app-grid"):
             yield NavTree(self.db)
             yield ContentArea(self.db)
         yield Footer()
