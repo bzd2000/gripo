@@ -8,7 +8,7 @@ from textual.widgets import Footer, Header, Label, TabbedContent, TabPane
 from tracker.db import Database
 from tracker.widgets.subjects_list import SubjectSelected, SubjectsList
 
-_DB_PATH = Path.home() / ".local" / "share" / "tracker" / "tracker.db"
+_DB_PATH = Path.home() / ".tracker" / "tracker.db"
 
 
 class TrackerApp(App):
