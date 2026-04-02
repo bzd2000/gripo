@@ -51,6 +51,7 @@ class Task:
     category: Optional[str]
     day: Optional[str]
     today: bool
+    due_date: Optional[str]
     created_at: str
     completed_at: Optional[str]
     deleted_at: Optional[str]
@@ -70,6 +71,7 @@ class Task:
             category=row["category"],
             day=row["day"],
             today=bool(row["today"]),
+            due_date=row["due_date"] if "due_date" in keys else None,
             created_at=row["created_at"],
             completed_at=row["completed_at"],
             deleted_at=row["deleted_at"],

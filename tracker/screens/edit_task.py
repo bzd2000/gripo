@@ -47,6 +47,11 @@ class EditTaskScreen(ModalScreen["TaskData | None"]):
                 value=self._task.category if self._task.category else Select.BLANK,
                 id="category-select",
             )
+            yield Input(
+                value=self._task.due_date or "",
+                placeholder="Due date (YYYY-MM-DD, optional)",
+                id="due-date-input",
+            )
             with Horizontal():
                 yield Button("Save", variant="primary", id="save-btn")
                 yield Button("Cancel", variant="default", id="cancel-btn")
@@ -80,4 +85,5 @@ class EditTaskScreen(ModalScreen["TaskData | None"]):
             else None
         )
 
-        self.dismiss(TaskData(text=text, priority=priority, category=category))
+        due_date = self.query_one("#due-date-input", Input).value.strip() or None
+        self.dismiss(TaskData(text=text, priority=priority, category=category, due_date=due_date))

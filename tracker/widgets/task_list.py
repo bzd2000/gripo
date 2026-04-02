@@ -48,7 +48,8 @@ def _task_label(task: Task) -> str:
     today_flag = " ☆" if task.today else ""
     day_label = f" [{task.day}]" if task.day else ""
     cat_label = f" ({task.category})" if task.category else ""
-    return f"{icon} {task.text}{cat_label} [{task.priority}]{today_flag}{day_label}"
+    due_label = f" due:{task.due_date}" if task.due_date else ""
+    return f"{icon} {task.text}{cat_label} [{task.priority}]{today_flag}{day_label}{due_label}"
 
 
 def _css_classes(task: Task) -> str:
@@ -121,6 +122,7 @@ class TaskList(ListView):
                     text=data.text,
                     priority=data.priority,
                     category=data.category,
+                    due_date=data.due_date,
                 )
                 self._refresh_list()
                 self.post_message(DataChanged())
@@ -135,7 +137,7 @@ class TaskList(ListView):
 
         def _on_result(data) -> None:
             if data:
-                self._db.update_task(task.id, text=data.text, priority=data.priority, category=data.category)
+                self._db.update_task(task.id, text=data.text, priority=data.priority, category=data.category, due_date=data.due_date)
                 self._refresh_list()
                 self.post_message(DataChanged())
                 self.notify("Task updated")

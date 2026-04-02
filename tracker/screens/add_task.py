@@ -18,6 +18,7 @@ class TaskData:
     text: str
     priority: str
     category: Optional[str]
+    due_date: Optional[str]
 
 
 _PRIORITY_OPTIONS = [
@@ -64,6 +65,7 @@ class AddTaskScreen(ModalScreen["TaskData | None"]):
                 allow_blank=True,
                 id="category-select",
             )
+            yield Input(placeholder="Due date (YYYY-MM-DD, optional)", id="due-date-input")
             with Horizontal():
                 yield Button("Add", variant="primary", id="add-btn")
                 yield Button("Cancel", variant="default", id="cancel-btn")
@@ -97,4 +99,5 @@ class AddTaskScreen(ModalScreen["TaskData | None"]):
             else None
         )
 
-        self.dismiss(TaskData(text=text, priority=priority, category=category))
+        due_date = self.query_one("#due-date-input", Input).value.strip() or None
+        self.dismiss(TaskData(text=text, priority=priority, category=category, due_date=due_date))

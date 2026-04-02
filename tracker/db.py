@@ -10,6 +10,8 @@ from typing import List, Optional, Union
 
 from tracker.models import FollowUp, Note, OpenPoint, Subject, Task
 
+_SENTINEL = object()
+
 _SCHEMA = """
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     category      TEXT CHECK (category IN ('delivery', 'admin', 'people', 'strategy', 'meeting', 'other')),
     day           TEXT CHECK (day IN ('mon', 'tue', 'wed', 'thu', 'fri', 'anytime')),
     today         INTEGER NOT NULL DEFAULT 0,
+    due_date      TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at  TEXT,
     deleted_at    TEXT
@@ -97,7 +100,15 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         # Apply pragmas and schema
         self.conn.executescript(_SCHEMA)
+        self._migrate()
         self.conn.commit()
+
+    def _migrate(self) -> None:
+        """Run forward-only migrations for schema changes."""
+        # Add due_date column to tasks if missing
+        cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(tasks)").fetchall()]
+        if "due_date" not in cols:
+            self.conn.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT")
 
     # ------------------------------------------------------------------
     # Subject CRUD
@@ -204,12 +215,13 @@ class Database:
         category: Optional[str] = None,
         day: Optional[str] = None,
         today: bool = False,
+        due_date: Optional[str] = None,
     ) -> str:
         task_id = _new_id()
         self.conn.execute(
-            """INSERT INTO tasks (id, subject_id, text, priority, status, category, day, today)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (task_id, subject_id, text, priority, status, category, day, int(today)),
+            """INSERT INTO tasks (id, subject_id, text, priority, status, category, day, today, due_date)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (task_id, subject_id, text, priority, status, category, day, int(today), due_date),
         )
         self.conn.commit()
         return task_id
@@ -265,14 +277,22 @@ class Database:
         )
         self.conn.commit()
 
+    def update_task_due_date(self, task_id: str, due_date: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE tasks SET due_date = ? WHERE id = ?",
+            (due_date, task_id),
+        )
+        self.conn.commit()
+
     def update_task(
         self,
         task_id: str,
         text: Optional[str] = None,
         priority: Optional[str] = None,
         category: Optional[str] = None,
+        due_date: object = _SENTINEL,
     ) -> None:
-        """Update text, priority, and/or category fields on a task."""
+        """Update text, priority, category, and/or due_date fields on a task."""
         fields: list[str] = []
         values: list = []
         if text is not None:
@@ -284,6 +304,9 @@ class Database:
         if category is not None:
             fields.append("category = ?")
             values.append(category)
+        if due_date is not _SENTINEL:
+            fields.append("due_date = ?")
+            values.append(due_date)
         if not fields:
             return
         values.append(task_id)
