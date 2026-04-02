@@ -237,7 +237,7 @@ def test_update_task_text(db: Database) -> None:
     assert task.text == "New text"
 
 
-def test_update_task_priority(db: Database) -> None:
+def test_update_task_changes_priority(db: Database) -> None:
     sid = _subject(db)
     tid = db.add_task(subject_id=sid, text="Reprioritize", priority="should")
     db.update_task(tid, priority="if-time")
