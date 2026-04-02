@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from textual.app import ComposeResult
 from textual.widgets import Label, ListItem, ListView
 
 from tracker.db import Database
-from tracker.messages import DataChanged
+from tracker.messages import DataChanged, ShowContent
 from tracker.models import Task
-from tracker.screens.add_task import AddTaskScreen
 from tracker.screens.confirm import ConfirmScreen
-from tracker.screens.edit_task import EditTaskScreen
 
 _STATUS_ICON = {
     "todo": "○",
@@ -115,34 +112,13 @@ class TaskList(ListView):
     # ------------------------------------------------------------------
 
     def action_add_task(self) -> None:
-        def _on_result(data) -> None:
-            if data:
-                self._db.add_task(
-                    subject_id=self._subject_id,
-                    text=data.text,
-                    priority=data.priority,
-                    category=data.category,
-                    due_date=data.due_date,
-                )
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Task added")
-
-        self.app.push_screen(AddTaskScreen(), _on_result)
+        self.post_message(ShowContent(content_type="task_form", data={"subject_id": self._subject_id}))
 
     def action_edit_task(self) -> None:
         task = self._highlighted_task()
         if not task:
             return
-
-        def _on_result(data) -> None:
-            if data:
-                self._db.update_task(task.id, text=data.text, priority=data.priority, category=data.category, due_date=data.due_date)
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Task updated")
-
-        self.app.push_screen(EditTaskScreen(task), _on_result)
+        self.post_message(ShowContent(content_type="task_form", data={"subject_id": self._subject_id, "task_id": task.id}))
 
     def action_toggle_done(self) -> None:
         task = self._highlighted_task()
