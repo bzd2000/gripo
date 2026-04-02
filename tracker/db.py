@@ -300,6 +300,24 @@ class Database:
         )
         self.conn.commit()
 
+    def list_week_tasks(self) -> List[Task]:
+        """Return week-assigned non-done tasks across all subjects, ordered by day then priority.
+
+        Excludes soft-deleted tasks and tasks belonging to soft-deleted subjects.
+        Includes subject_name from join.
+        """
+        sql = """
+            SELECT t.*, s.name AS subject_name
+            FROM tasks t JOIN subjects s ON t.subject_id = s.id
+            WHERE t.day IS NOT NULL AND t.status != 'done'
+            AND t.deleted_at IS NULL AND s.deleted_at IS NULL
+            ORDER BY CASE t.day WHEN 'mon' THEN 1 WHEN 'tue' THEN 2 WHEN 'wed' THEN 3
+                                 WHEN 'thu' THEN 4 WHEN 'fri' THEN 5 ELSE 6 END,
+                     CASE t.priority WHEN 'must' THEN 1 WHEN 'should' THEN 2 ELSE 3 END
+        """
+        rows = self.conn.execute(sql).fetchall()
+        return [Task.from_row(row) for row in rows]
+
     def list_today_tasks(self) -> List[Task]:
         """Return today-flagged non-done tasks across all subjects, ordered by priority.
 
@@ -373,5 +391,159 @@ class Database:
         self.conn.execute(
             "UPDATE notes SET deleted_at = ? WHERE id = ?",
             (self._now(), note_id),
+        )
+        self.conn.commit()
+
+    # ------------------------------------------------------------------
+    # Open Point CRUD
+    # ------------------------------------------------------------------
+
+    def add_open_point(
+        self,
+        subject_id: str,
+        text: str,
+        context: Optional[str] = None,
+    ) -> str:
+        point_id = _new_id()
+        self.conn.execute(
+            "INSERT INTO open_points (id, subject_id, text, context) VALUES (?, ?, ?, ?)",
+            (point_id, subject_id, text, context),
+        )
+        self.conn.commit()
+        return point_id
+
+    def get_open_point(self, point_id: str) -> Optional[OpenPoint]:
+        row = self.conn.execute(
+            "SELECT * FROM open_points WHERE id = ? AND deleted_at IS NULL",
+            (point_id,),
+        ).fetchone()
+        return OpenPoint.from_row(row) if row else None
+
+    def list_open_points(self, subject_id: str) -> List[OpenPoint]:
+        """Return open points for a subject, excluding soft-deleted.
+
+        Ordered by status (open first, parked second, resolved last) then raised_at.
+        """
+        _STATUS_ORDER = (
+            "CASE status WHEN 'open' THEN 0 WHEN 'parked' THEN 1 WHEN 'resolved' THEN 2 ELSE 3 END"
+        )
+        sql = f"""
+            SELECT * FROM open_points
+            WHERE subject_id = ? AND deleted_at IS NULL
+            ORDER BY {_STATUS_ORDER}, raised_at ASC
+        """
+        rows = self.conn.execute(sql, (subject_id,)).fetchall()
+        return [OpenPoint.from_row(row) for row in rows]
+
+    def update_open_point_status(self, point_id: str, status: str) -> None:
+        self.conn.execute(
+            "UPDATE open_points SET status = ? WHERE id = ?",
+            (status, point_id),
+        )
+        self.conn.commit()
+
+    def resolve_open_point(self, point_id: str, note: str) -> None:
+        """Set status to resolved, record resolved_note and resolved_at."""
+        self.conn.execute(
+            "UPDATE open_points SET status = 'resolved', resolved_note = ?, resolved_at = ? WHERE id = ?",
+            (note, self._now(), point_id),
+        )
+        self.conn.commit()
+
+    def update_open_point_text(self, point_id: str, text: str) -> None:
+        self.conn.execute(
+            "UPDATE open_points SET text = ? WHERE id = ?",
+            (text, point_id),
+        )
+        self.conn.commit()
+
+    def update_open_point_context(self, point_id: str, context: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE open_points SET context = ? WHERE id = ?",
+            (context, point_id),
+        )
+        self.conn.commit()
+
+    def soft_delete_open_point(self, point_id: str) -> None:
+        self.conn.execute(
+            "UPDATE open_points SET deleted_at = ? WHERE id = ?",
+            (self._now(), point_id),
+        )
+        self.conn.commit()
+
+    # ------------------------------------------------------------------
+    # Follow-Up CRUD
+    # ------------------------------------------------------------------
+
+    def add_follow_up(
+        self,
+        subject_id: str,
+        text: str,
+        owner: str,
+        due_by: Optional[str] = None,
+    ) -> str:
+        follow_up_id = _new_id()
+        self.conn.execute(
+            "INSERT INTO follow_ups (id, subject_id, text, owner, due_by) VALUES (?, ?, ?, ?, ?)",
+            (follow_up_id, subject_id, text, owner, due_by),
+        )
+        self.conn.commit()
+        return follow_up_id
+
+    def get_follow_up(self, follow_up_id: str) -> Optional[FollowUp]:
+        row = self.conn.execute(
+            "SELECT * FROM follow_ups WHERE id = ? AND deleted_at IS NULL",
+            (follow_up_id,),
+        ).fetchone()
+        return FollowUp.from_row(row) if row else None
+
+    def list_follow_ups(self, subject_id: str) -> List[FollowUp]:
+        """Return follow-ups for a subject, excluding soft-deleted.
+
+        Ordered by status (waiting first, overdue second, rest after) then due_by ASC NULLS LAST.
+        """
+        _STATUS_ORDER = (
+            "CASE status WHEN 'waiting' THEN 0 WHEN 'overdue' THEN 1 ELSE 2 END"
+        )
+        sql = f"""
+            SELECT * FROM follow_ups
+            WHERE subject_id = ? AND deleted_at IS NULL
+            ORDER BY {_STATUS_ORDER}, due_by ASC NULLS LAST
+        """
+        rows = self.conn.execute(sql, (subject_id,)).fetchall()
+        return [FollowUp.from_row(row) for row in rows]
+
+    def update_follow_up_status(self, follow_up_id: str, status: str) -> None:
+        self.conn.execute(
+            "UPDATE follow_ups SET status = ? WHERE id = ?",
+            (status, follow_up_id),
+        )
+        self.conn.commit()
+
+    def update_follow_up_notes(self, follow_up_id: str, notes: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE follow_ups SET notes = ? WHERE id = ?",
+            (notes, follow_up_id),
+        )
+        self.conn.commit()
+
+    def update_follow_up(
+        self,
+        follow_up_id: str,
+        text: str,
+        owner: str,
+        due_by: Optional[str],
+    ) -> None:
+        """Update text, owner, and due_by fields on a follow-up."""
+        self.conn.execute(
+            "UPDATE follow_ups SET text = ?, owner = ?, due_by = ? WHERE id = ?",
+            (text, owner, due_by, follow_up_id),
+        )
+        self.conn.commit()
+
+    def soft_delete_follow_up(self, follow_up_id: str) -> None:
+        self.conn.execute(
+            "UPDATE follow_ups SET deleted_at = ? WHERE id = ?",
+            (self._now(), follow_up_id),
         )
         self.conn.commit()

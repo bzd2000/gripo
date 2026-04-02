@@ -10,6 +10,7 @@ from tracker.messages import DataChanged
 from tracker.screens.subject_detail import SubjectDetailScreen
 from tracker.widgets.subjects_list import SubjectSelected, SubjectsList
 from tracker.widgets.today_view import TodayView
+from tracker.widgets.week_view import WeekView
 
 _DB_PATH = Path.home() / ".tracker" / "tracker.db"
 
@@ -36,7 +37,7 @@ class TrackerApp(App):
             with TabPane("Today", id="today-tab"):
                 yield TodayView(self.db)
             with TabPane("This Week", id="week-tab"):
-                yield Label("This Week view — coming in Phase 2", classes="empty-state")
+                yield WeekView(self.db)
         yield Footer()
 
     def on_subject_selected(self, message: SubjectSelected) -> None:
@@ -53,6 +54,11 @@ class TrackerApp(App):
         try:
             today_view = self.query_one(TodayView)
             today_view.refresh_view()
+        except Exception:
+            pass
+        try:
+            week_view = self.query_one(WeekView)
+            week_view.refresh_view()
         except Exception:
             pass
 
