@@ -301,7 +301,7 @@ class Database:
         self.conn.commit()
 
     # ------------------------------------------------------------------
-    # Note stubs (needed for cascade tests and future tasks)
+    # Note CRUD
     # ------------------------------------------------------------------
 
     def add_note(self, subject_id: str, content: str) -> str:
@@ -313,8 +313,31 @@ class Database:
         self.conn.commit()
         return note_id
 
+    def get_note(self, note_id: str) -> Optional[Note]:
+        row = self.conn.execute(
+            "SELECT * FROM notes WHERE id = ?", (note_id,)
+        ).fetchone()
+        return Note.from_row(row) if row else None
+
     def list_notes(self, subject_id: str) -> List[Note]:
+        """Return notes for a subject, excluding soft-deleted, newest first."""
         rows = self.conn.execute(
-            "SELECT * FROM notes WHERE subject_id = ?", (subject_id,)
+            "SELECT * FROM notes WHERE subject_id = ? AND deleted_at IS NULL ORDER BY created_at DESC",
+            (subject_id,),
         ).fetchall()
         return [Note.from_row(row) for row in rows]
+
+    def update_note(self, note_id: str, content: str) -> None:
+        """Update note content and set updated_at to now."""
+        self.conn.execute(
+            "UPDATE notes SET content = ?, updated_at = ? WHERE id = ?",
+            (content, self._now(), note_id),
+        )
+        self.conn.commit()
+
+    def soft_delete_note(self, note_id: str) -> None:
+        self.conn.execute(
+            "UPDATE notes SET deleted_at = ? WHERE id = ?",
+            (self._now(), note_id),
+        )
+        self.conn.commit()
