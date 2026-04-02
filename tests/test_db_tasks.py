@@ -282,3 +282,132 @@ def test_soft_delete_task_excludes_from_list(db: Database) -> None:
     db.soft_delete_task(tid)
     tasks = db.list_tasks(subject_id=sid)
     assert all(t.id != tid for t in tasks)
+
+
+# ---------------------------------------------------------------------------
+# list_today_tasks
+# ---------------------------------------------------------------------------
+
+def test_list_today_tasks_returns_today_flagged_tasks(db: Database) -> None:
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="Today task", today=True)
+    db.add_task(subject_id=sid, text="Not today task", today=False)
+
+    tasks = db.list_today_tasks()
+    assert len(tasks) == 1
+    assert tasks[0].id == tid
+    assert tasks[0].text == "Today task"
+
+
+def test_list_today_tasks_excludes_done(db: Database) -> None:
+    sid = _subject(db)
+    db.add_task(subject_id=sid, text="Done today", today=True, status="done")
+    tid = db.add_task(subject_id=sid, text="Active today", today=True)
+
+    tasks = db.list_today_tasks()
+    ids = [t.id for t in tasks]
+    assert tid in ids
+    assert not any(t.text == "Done today" for t in tasks)
+
+
+def test_list_today_tasks_excludes_soft_deleted(db: Database) -> None:
+    sid = _subject(db)
+    tid_active = db.add_task(subject_id=sid, text="Active", today=True)
+    tid_deleted = db.add_task(subject_id=sid, text="Deleted", today=True)
+    db.soft_delete_task(tid_deleted)
+
+    tasks = db.list_today_tasks()
+    ids = [t.id for t in tasks]
+    assert tid_active in ids
+    assert tid_deleted not in ids
+
+
+def test_list_today_tasks_excludes_soft_deleted_subject(db: Database) -> None:
+    sid_active = _subject(db, "Active Subject")
+    sid_deleted = _subject(db, "Deleted Subject")
+    db.add_task(subject_id=sid_active, text="Active subject task", today=True)
+    db.add_task(subject_id=sid_deleted, text="Deleted subject task", today=True)
+    db.soft_delete_subject(sid_deleted)
+
+    tasks = db.list_today_tasks()
+    assert len(tasks) == 1
+    assert tasks[0].text == "Active subject task"
+
+
+def test_list_today_tasks_ordered_by_priority(db: Database) -> None:
+    sid = _subject(db)
+    db.add_task(subject_id=sid, text="If-time task", today=True, priority="if-time")
+    db.add_task(subject_id=sid, text="Should task", today=True, priority="should")
+    db.add_task(subject_id=sid, text="Must task", today=True, priority="must")
+
+    tasks = db.list_today_tasks()
+    assert tasks[0].text == "Must task"
+    assert tasks[1].text == "Should task"
+    assert tasks[2].text == "If-time task"
+
+
+def test_list_today_tasks_includes_subject_name(db: Database) -> None:
+    sid = _subject(db, "My Project")
+    db.add_task(subject_id=sid, text="A task", today=True)
+
+    tasks = db.list_today_tasks()
+    assert len(tasks) == 1
+    assert tasks[0].subject_name == "My Project"
+
+
+def test_list_today_tasks_crosses_subjects(db: Database) -> None:
+    sid1 = _subject(db, "Subject 1")
+    sid2 = _subject(db, "Subject 2")
+    db.add_task(subject_id=sid1, text="Task from S1", today=True)
+    db.add_task(subject_id=sid2, text="Task from S2", today=True)
+
+    tasks = db.list_today_tasks()
+    texts = [t.text for t in tasks]
+    assert "Task from S1" in texts
+    assert "Task from S2" in texts
+
+
+# ---------------------------------------------------------------------------
+# today_counts
+# ---------------------------------------------------------------------------
+
+def test_today_counts_returns_zero_when_no_today_tasks(db: Database) -> None:
+    sid = _subject(db)
+    db.add_task(subject_id=sid, text="Not today")
+
+    total, done, blocked = db.today_counts()
+    assert total == 0
+    assert done == 0
+    assert blocked == 0
+
+
+def test_today_counts_total_includes_done(db: Database) -> None:
+    sid = _subject(db)
+    db.add_task(subject_id=sid, text="Active", today=True)
+    db.add_task(subject_id=sid, text="Done task", today=True, status="done")
+
+    total, done, blocked = db.today_counts()
+    assert total == 2
+    assert done == 1
+    assert blocked == 0
+
+
+def test_today_counts_blocked(db: Database) -> None:
+    sid = _subject(db)
+    db.add_task(subject_id=sid, text="Blocked task", today=True, status="blocked")
+    db.add_task(subject_id=sid, text="Active task", today=True)
+
+    total, done, blocked = db.today_counts()
+    assert total == 2
+    assert done == 0
+    assert blocked == 1
+
+
+def test_today_counts_excludes_soft_deleted(db: Database) -> None:
+    sid = _subject(db)
+    db.add_task(subject_id=sid, text="Active", today=True)
+    tid = db.add_task(subject_id=sid, text="Deleted", today=True)
+    db.soft_delete_task(tid)
+
+    total, done, blocked = db.today_counts()
+    assert total == 1

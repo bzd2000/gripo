@@ -300,6 +300,40 @@ class Database:
         )
         self.conn.commit()
 
+    def list_today_tasks(self) -> List[Task]:
+        """Return today-flagged non-done tasks across all subjects, ordered by priority.
+
+        Excludes soft-deleted tasks and tasks belonging to soft-deleted subjects.
+        Includes subject_name from join.
+        """
+        sql = """
+            SELECT t.*, s.name AS subject_name
+            FROM tasks t JOIN subjects s ON t.subject_id = s.id
+            WHERE t.today = 1 AND t.status != 'done'
+            AND t.deleted_at IS NULL AND s.deleted_at IS NULL
+            ORDER BY CASE t.priority WHEN 'must' THEN 1 WHEN 'should' THEN 2 ELSE 3 END
+        """
+        rows = self.conn.execute(sql).fetchall()
+        return [Task.from_row(row) for row in rows]
+
+    def today_counts(self) -> tuple[int, int, int]:
+        """Return (total, done, blocked) counts for today-flagged tasks.
+
+        Includes done tasks in the total (for summary display).
+        Excludes soft-deleted tasks.
+        """
+        sql = """
+            SELECT COUNT(*) AS total,
+              SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS done,
+              SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) AS blocked
+            FROM tasks WHERE today = 1 AND deleted_at IS NULL
+        """
+        row = self.conn.execute(sql).fetchone()
+        total = row["total"] or 0
+        done = row["done"] or 0
+        blocked = row["blocked"] or 0
+        return (total, done, blocked)
+
     # ------------------------------------------------------------------
     # Note CRUD
     # ------------------------------------------------------------------
