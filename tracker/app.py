@@ -42,6 +42,11 @@ class TrackerApp(App):
                 yield WeekView(self.db)
         yield Footer()
 
+    def on_mount(self) -> None:
+        rolled = self.db.perform_week_rollover()
+        if rolled:
+            self.notify("Week rolled over — tasks reset for the new week.")
+
     def on_subject_selected(self, message: SubjectSelected) -> None:
         self.push_screen(SubjectDetailScreen(self.db, message.subject_id))
 

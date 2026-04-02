@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -579,3 +579,59 @@ class Database:
             (self._now(), follow_up_id),
         )
         self.conn.commit()
+
+    # ------------------------------------------------------------------
+    # Week rollover
+    # ------------------------------------------------------------------
+
+    def perform_week_rollover(self, force: bool = False) -> bool:
+        """Perform week rollover housekeeping.
+
+        1. Calculate current Monday from date.today().
+        2. Read week_of from meta table.
+        3. If not force and same week, return False.
+        4. In a transaction:
+           - Clear today flags on all tasks.
+           - Reset day on non-done tasks.
+           - Soft-delete done tasks completed more than 14 days ago.
+           - Update meta.week_of to current Monday.
+        5. Return True.
+        """
+        today = date.today()
+        current_monday = today - timedelta(days=today.weekday())
+        current_monday_str = current_monday.isoformat()
+
+        row = self.conn.execute(
+            "SELECT value FROM meta WHERE key = 'week_of'"
+        ).fetchone()
+        stored_week = row["value"] if row else None
+
+        if not force and stored_week == current_monday_str:
+            return False
+
+        cutoff = (today - timedelta(days=14)).isoformat()
+        now = self._now()
+
+        with self.conn:
+            # Clear today flags on all tasks
+            self.conn.execute("UPDATE tasks SET today = 0 WHERE deleted_at IS NULL")
+            # Reset day on non-done tasks
+            self.conn.execute(
+                "UPDATE tasks SET day = NULL WHERE status != 'done' AND deleted_at IS NULL"
+            )
+            # Soft-delete done tasks completed more than 14 days ago
+            self.conn.execute(
+                """UPDATE tasks SET deleted_at = ?
+                   WHERE status = 'done'
+                   AND completed_at IS NOT NULL
+                   AND DATE(completed_at) <= ?
+                   AND deleted_at IS NULL""",
+                (now, cutoff),
+            )
+            # Update meta.week_of
+            self.conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES ('week_of', ?)",
+                (current_monday_str,),
+            )
+
+        return True
