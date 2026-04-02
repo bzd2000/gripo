@@ -10,6 +10,7 @@ from textual.containers import ScrollableContainer
 
 from tracker.db import Database
 from tracker.messages import DataChanged
+from tracker.widgets.notes_list import NotesList
 from tracker.widgets.task_list import TaskList
 
 
@@ -53,18 +54,27 @@ class SubjectDetailScreen(Screen):
                 yield Label("No open points yet.", classes="empty-state")
             with Collapsible(title="Follow-Ups", id="follow-ups-collapsible"):
                 yield Label("No follow-ups yet.", classes="empty-state")
-            with Collapsible(title="Notes", id="notes-collapsible"):
-                yield Label("No notes yet.", classes="empty-state")
+            with Collapsible(title=self._notes_title(), id="notes-collapsible"):
+                yield NotesList(self._db, self._subject_id)
         yield Footer()
 
     def _tasks_title(self) -> str:
         count = self._task_count()
         return f"Tasks ({count})"
 
+    def _notes_count(self) -> int:
+        return len(self._db.list_notes(self._subject_id))
+
+    def _notes_title(self) -> str:
+        count = self._notes_count()
+        return f"Notes ({count} entries)"
+
     def on_data_changed(self, message: DataChanged) -> None:
         """Refresh collapsible titles when data changes."""
         tasks_collapsible = self.query_one("#tasks-collapsible", Collapsible)
         tasks_collapsible.title = self._tasks_title()
+        notes_collapsible = self.query_one("#notes-collapsible", Collapsible)
+        notes_collapsible.title = self._notes_title()
 
     def action_pop_screen(self) -> None:
         self.app.pop_screen()
