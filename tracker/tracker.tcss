@@ -125,7 +125,7 @@ ContentArea > * {
 }
 
 .item-form-fields {
-    height: 100%;
+    height: auto;
     padding: 0 1;
 }
 
