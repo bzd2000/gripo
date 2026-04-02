@@ -6,7 +6,7 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widget import Widget
 from textual.widgets import Input, Label, Select, TextArea
 
@@ -59,35 +59,38 @@ class TaskForm(Widget):
         initial_category = self._task.category if self._task else None
         initial_comment = self._task.comment if self._task else ""
 
-        # For due_date: new tasks default to today, editing uses existing value (may be empty)
         if is_edit:
             initial_due_date = self._task.due_date or ""
         else:
             initial_due_date = None  # DateInput will default to today
 
-        with Vertical():
-            yield Label(title)
+        with Vertical(classes="form-container"):
+            yield Label(title, classes="form-title")
             yield Input(value=initial_text, placeholder="Task text", id="task-text-input")
-            yield Label("Priority")
-            yield Select(
-                options=_PRIORITY_OPTIONS,
-                value=initial_priority,
-                id="task-priority-select",
-            )
-            yield Label("Category (optional)")
-            yield Select(
-                options=_CATEGORY_OPTIONS,
-                value=initial_category if initial_category else Select.BLANK,
-                allow_blank=True,
-                id="task-category-select",
-            )
-            yield Label("Due date")
-            yield DateInput(
-                value=initial_due_date,
-                placeholder="YYYY-MM-DD",
-                id="task-due-date-input",
-            )
-            yield Label("Comment")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("Priority", classes="field-label")
+                    yield Select(
+                        options=_PRIORITY_OPTIONS,
+                        value=initial_priority,
+                        id="task-priority-select",
+                    )
+                with Vertical():
+                    yield Label("Category", classes="field-label")
+                    yield Select(
+                        options=_CATEGORY_OPTIONS,
+                        value=initial_category if initial_category else Select.BLANK,
+                        allow_blank=True,
+                        id="task-category-select",
+                    )
+                with Vertical():
+                    yield Label("Due date", classes="field-label")
+                    yield DateInput(
+                        value=initial_due_date,
+                        placeholder="YYYY-MM-DD",
+                        id="task-due-date-input",
+                    )
+            yield Label("Comment", classes="field-label")
             yield TextArea(
                 text=initial_comment or "",
                 language="markdown",
@@ -116,7 +119,7 @@ class TaskForm(Widget):
         priority = str(priority_select.value) if priority_select.value != Select.BLANK else "should"
         category_val = category_select.value
         category = str(category_val) if category_val != Select.BLANK else None
-        due_date = due_date_input.date_value  # returns valid ISO date or None
+        due_date = due_date_input.date_value
         comment = comment_area.text.strip() or None
 
         if self._task_id:

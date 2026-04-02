@@ -6,7 +6,7 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widget import Widget
 from textual.widgets import Input, Label, TextArea
 
@@ -37,57 +37,41 @@ class FollowUpForm(Widget):
 
     def compose(self) -> ComposeResult:
         fu = self._follow_up
+        is_edit = fu is not None
+        title = "Edit Follow-Up" if is_edit else "New Follow-Up"
+
         initial_text = fu.text if fu else ""
         initial_owner = fu.owner if fu else ""
         initial_notes = fu.notes or "" if fu else ""
         initial_comment = fu.comment or "" if fu else ""
 
-        # due_by: for new, default to today; for edit, use stored value (may be empty)
         if fu:
             initial_due_by = fu.due_by or ""
-        else:
-            initial_due_by = None  # DateInput defaults to today
-
-        # asked_on: for new, default to today; for edit, use stored value
-        if fu:
             initial_asked_on = fu.asked_on
         else:
-            initial_asked_on = None  # DateInput defaults to today
+            initial_due_by = None  # DateInput defaults to today
+            initial_asked_on = None
 
-        with Vertical():
-            yield Input(
-                value=initial_text,
-                placeholder="What are you waiting for?",
-                id="fu-text-input",
-            )
-            yield Input(
-                value=initial_owner,
-                placeholder="Owner (who should deliver this?)",
-                id="fu-owner-input",
-            )
-            yield Label("Due by")
-            yield DateInput(
-                value=initial_due_by,
-                placeholder="YYYY-MM-DD",
-                id="fu-due-by-input",
-            )
-            yield Label("Asked on")
-            yield DateInput(
-                value=initial_asked_on,
-                placeholder="YYYY-MM-DD",
-                id="fu-asked-on-input",
-            )
-            yield Label("Notes")
-            yield TextArea(
-                text=initial_notes,
-                id="fu-notes-area",
-            )
-            yield Label("Comment")
-            yield TextArea(
-                text=initial_comment,
-                language="markdown",
-                id="fu-comment-area",
-            )
+        with Vertical(classes="form-container"):
+            yield Label(title, classes="form-title")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("What", classes="field-label")
+                    yield Input(value=initial_text, placeholder="What are you waiting for?", id="fu-text-input")
+                with Vertical():
+                    yield Label("Owner", classes="field-label")
+                    yield Input(value=initial_owner, placeholder="Who?", id="fu-owner-input")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("Due by", classes="field-label")
+                    yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
+                with Vertical():
+                    yield Label("Asked on", classes="field-label")
+                    yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
+            yield Label("Notes", classes="field-label")
+            yield TextArea(text=initial_notes, id="fu-notes-area")
+            yield Label("Comment", classes="field-label")
+            yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#fu-text-input", Input).focus()
@@ -113,38 +97,24 @@ class FollowUpForm(Widget):
             self.notify("Owner cannot be empty.", severity="error")
             return
 
-        due_by = due_by_input.date_value  # valid ISO date or None
+        due_by = due_by_input.date_value
         notes = notes_area.text.strip() or None
         comment = comment_area.text.strip() or None
 
         if self._follow_up_id:
-            self._db.update_follow_up(
-                self._follow_up_id,
-                text=text,
-                owner=owner,
-                due_by=due_by,
-            )
+            self._db.update_follow_up(self._follow_up_id, text=text, owner=owner, due_by=due_by)
             self._db.update_follow_up_notes(self._follow_up_id, notes)
             self._db.update_follow_up_comment(self._follow_up_id, comment)
             saved_id = self._follow_up_id
         else:
             saved_id = self._db.add_follow_up(
-                subject_id=self._subject_id,
-                text=text,
-                owner=owner,
-                due_by=due_by,
-                comment=comment,
+                subject_id=self._subject_id, text=text, owner=owner, due_by=due_by, comment=comment,
             )
             if notes:
                 self._db.update_follow_up_notes(saved_id, notes)
 
         self.post_message(DataChanged())
-        self.post_message(
-            ContentSaved(
-                "follow_up_form",
-                {"subject_id": self._subject_id, "follow_up_id": saved_id},
-            )
-        )
+        self.post_message(ContentSaved("follow_up_form", {"subject_id": self._subject_id, "follow_up_id": saved_id}))
 
     def action_cancel(self) -> None:
         self.post_message(ContentCancelled())

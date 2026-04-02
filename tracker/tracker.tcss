@@ -113,25 +113,46 @@ ContentArea {
 /* ── Form styles ─────────────────────────────────────────────────────── */
 
 .form-container {
-    layout: vertical;
     height: auto;
+    padding: 0 1;
 }
 
 .form-container Input {
-    margin: 1 0;
-}
-
-.form-container TextArea {
-    min-height: 8;
-    margin: 1 0;
+    height: 3;
 }
 
 .form-container Select {
-    margin: 1 0;
+    height: 3;
 }
 
-.form-container Button {
-    margin: 1 1 0 0;
+.form-container TextArea {
+    min-height: 5;
+    max-height: 12;
+}
+
+.form-container .form-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.form-container .field-label {
+    color: $text-muted;
+    margin-top: 0;
+    height: 1;
+}
+
+.form-row {
+    layout: horizontal;
+    height: auto;
+}
+
+.form-row > * {
+    width: 1fr;
+    margin-right: 1;
+}
+
+.form-row > *:last-child {
+    margin-right: 0;
 }
 
 /* ── SubjectOverview section headers ─────────────────────────────────── */

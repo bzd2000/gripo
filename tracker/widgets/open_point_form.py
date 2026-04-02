@@ -6,7 +6,7 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widget import Widget
 from textual.widgets import Input, Label, TextArea
 
@@ -35,35 +35,29 @@ class OpenPointForm(Widget):
         self._point = db.get_open_point(point_id) if point_id else None
 
     def compose(self) -> ComposeResult:
+        is_edit = self._point is not None
+        title = "Edit Open Point" if is_edit else "New Open Point"
+
         initial_text = self._point.text if self._point else ""
         initial_context = self._point.context or "" if self._point else ""
         initial_comment = self._point.comment or "" if self._point else ""
         initial_resolved_note = self._point.resolved_note or "" if self._point else ""
         is_resolved = self._point.status == "resolved" if self._point else False
 
-        with Vertical():
-            yield Input(
-                value=initial_text,
-                placeholder="Open point text",
-                id="op-text-input",
-            )
-            yield Input(
-                value=initial_context,
-                placeholder="Context (optional)",
-                id="op-context-input",
-            )
+        with Vertical(classes="form-container"):
+            yield Label(title, classes="form-title")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("Text", classes="field-label")
+                    yield Input(value=initial_text, placeholder="Open point text", id="op-text-input")
+                with Vertical():
+                    yield Label("Context", classes="field-label")
+                    yield Input(value=initial_context, placeholder="Context (optional)", id="op-context-input")
             if is_resolved:
-                yield Label("Resolution note")
-                yield Input(
-                    value=initial_resolved_note,
-                    placeholder="Resolution note",
-                    id="op-resolved-note-input",
-                )
-            yield Label("Comment")
-            yield TextArea(
-                text=initial_comment,
-                id="op-comment-area",
-            )
+                yield Label("Resolution note", classes="field-label")
+                yield Input(value=initial_resolved_note, placeholder="Resolution note", id="op-resolved-note-input")
+            yield Label("Comment", classes="field-label")
+            yield TextArea(text=initial_comment, language="markdown", id="op-comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#op-text-input", Input).focus()
@@ -89,7 +83,6 @@ class OpenPointForm(Widget):
             self._db.update_open_point_text(self._point_id, text)
             self._db.update_open_point_context(self._point_id, context)
             self._db.update_open_point_comment(self._point_id, comment)
-            # Handle resolved note if present
             try:
                 resolved_note_input = self.query_one("#op-resolved-note-input", Input)
                 resolved_note = resolved_note_input.value.strip() or None
@@ -100,19 +93,11 @@ class OpenPointForm(Widget):
             saved_id = self._point_id
         else:
             saved_id = self._db.add_open_point(
-                subject_id=self._subject_id,
-                text=text,
-                context=context,
-                comment=comment,
+                subject_id=self._subject_id, text=text, context=context, comment=comment,
             )
 
         self.post_message(DataChanged())
-        self.post_message(
-            ContentSaved(
-                "open_point_form",
-                {"subject_id": self._subject_id, "point_id": saved_id},
-            )
-        )
+        self.post_message(ContentSaved("open_point_form", {"subject_id": self._subject_id, "point_id": saved_id}))
 
     def action_cancel(self) -> None:
         self.post_message(ContentCancelled())
