@@ -7,6 +7,7 @@ from textual.widgets import Footer, Header, Label, TabbedContent, TabPane
 
 from tracker.db import Database
 from tracker.messages import DataChanged
+from tracker.screens.help import HelpScreen
 from tracker.screens.search import SearchScreen
 from tracker.screens.subject_detail import SubjectDetailScreen
 from tracker.widgets.subjects_list import SubjectSelected, SubjectsList
@@ -25,6 +26,7 @@ class TrackerApp(App):
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("/", "search", "Search"),
+        ("question_mark", "help", "Help"),
     ]
 
     def __init__(self) -> None:
@@ -49,6 +51,9 @@ class TrackerApp(App):
 
     def on_subject_selected(self, message: SubjectSelected) -> None:
         self.push_screen(SubjectDetailScreen(self.db, message.subject_id))
+
+    def action_help(self) -> None:
+        self.push_screen(HelpScreen())
 
     def action_search(self) -> None:
         def _on_result(result: dict | None) -> None:
