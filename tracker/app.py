@@ -1,11 +1,43 @@
-from textual.app import App
+"""TrackerApp — main Textual application."""
+
+from pathlib import Path
+
+from textual.app import App, ComposeResult
+from textual.widgets import Footer, Header, Label, TabbedContent, TabPane
+
+from tracker.db import Database
+from tracker.widgets.subjects_list import SubjectSelected, SubjectsList
+
+_DB_PATH = Path.home() / ".local" / "share" / "tracker" / "tracker.db"
 
 
 class TrackerApp(App):
     """Tracker TUI application."""
 
-    def main() -> None:
-        pass
+    CSS_PATH = "tracker.tcss"
+    TITLE = "Tracker"
+
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+    ]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.db = Database(_DB_PATH)
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with TabbedContent():
+            with TabPane("Subjects", id="subjects-tab"):
+                yield SubjectsList(self.db)
+            with TabPane("Today", id="today-tab"):
+                yield Label("Today view — coming in Phase 2", classes="empty-state")
+            with TabPane("This Week", id="week-tab"):
+                yield Label("This Week view — coming in Phase 2", classes="empty-state")
+        yield Footer()
+
+    def on_subject_selected(self, message: SubjectSelected) -> None:
+        self.notify("Subject detail coming in Phase 2")
 
 
 def main() -> None:
