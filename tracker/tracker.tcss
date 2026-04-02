@@ -107,7 +107,12 @@ NavTree {
 
 ContentArea {
     width: 3fr;
+    height: 1fr;
     padding: 1 2;
+}
+
+ContentArea > * {
+    height: 1fr;
 }
 
 /* ── Form styles ─────────────────────────────────────────────────────── */
