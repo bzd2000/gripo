@@ -14,7 +14,7 @@
 /* Status classes */
 .status-done {
     color: $success;
-    text-style: line-through;
+    text-style: strike;
 }
 
 .status-blocked {
@@ -37,7 +37,7 @@
 
 .status-resolved {
     color: $success;
-    text-style: line-through;
+    text-style: strike;
 }
 
 .status-overdue {
