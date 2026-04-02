@@ -6,6 +6,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, Label, TabbedContent, TabPane
 
 from tracker.db import Database
+from tracker.screens.subject_detail import SubjectDetailScreen
 from tracker.widgets.subjects_list import SubjectSelected, SubjectsList
 
 _DB_PATH = Path.home() / ".tracker" / "tracker.db"
@@ -37,7 +38,7 @@ class TrackerApp(App):
         yield Footer()
 
     def on_subject_selected(self, message: SubjectSelected) -> None:
-        self.notify("Subject detail coming in Phase 2")
+        self.push_screen(SubjectDetailScreen(self.db, message.subject_id))
 
 
 def main() -> None:
