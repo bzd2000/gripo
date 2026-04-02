@@ -115,22 +115,21 @@ ContentArea > * {
 
 /* ── Item forms: top (fields) + bottom (comment) ─────────────────────── */
 
-/* The form itself is a 2-row grid: fields on top, comment fills bottom */
+/* Item form: two stacked containers */
 .item-form {
-    layout: grid;
-    grid-size: 1 2;
-    grid-rows: auto 1fr;
+    layout: vertical;
     width: 100%;
     height: 100%;
 }
 
 .item-form-fields {
-    height: auto;
+    height: 40%;
     padding: 0 1;
+    overflow-y: auto;
 }
 
 .item-form-comment {
-    height: 100%;
+    height: 60%;
     padding: 0 1;
 }
 
