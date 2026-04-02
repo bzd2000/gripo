@@ -6,15 +6,15 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Container
 from textual.widgets import Label, TextArea
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 
 
-class NoteEditor(Vertical):
-    """Inline editor for adding or editing a note."""
+class NoteEditor(Container):
+    """Full-pane markdown editor for notes."""
 
     BINDINGS = [
         Binding("ctrl+s", "save", "Save"),
@@ -48,8 +48,7 @@ class NoteEditor(Vertical):
         self.query_one("#note-content-area", TextArea).focus()
 
     def action_save(self) -> None:
-        content_area = self.query_one("#note-content-area", TextArea)
-        content = content_area.text.strip()
+        content = self.query_one("#note-content-area", TextArea).text.strip()
         if not content:
             self.notify("Note content cannot be empty.", severity="error")
             return
@@ -58,18 +57,10 @@ class NoteEditor(Vertical):
             self._db.update_note(self._note_id, content)
             saved_id = self._note_id
         else:
-            saved_id = self._db.add_note(
-                subject_id=self._subject_id,
-                content=content,
-            )
+            saved_id = self._db.add_note(subject_id=self._subject_id, content=content)
 
         self.post_message(DataChanged())
-        self.post_message(
-            ContentSaved(
-                "note_editor",
-                {"subject_id": self._subject_id, "note_id": saved_id},
-            )
-        )
+        self.post_message(ContentSaved("note_editor", {"subject_id": self._subject_id, "note_id": saved_id}))
 
     def action_cancel(self) -> None:
         self.post_message(ContentCancelled())

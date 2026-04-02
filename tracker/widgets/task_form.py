@@ -6,7 +6,8 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical
+from textual.widget import Widget
 from textual.widgets import Input, Label, Select, TextArea
 
 from tracker.db import Database
@@ -29,8 +30,8 @@ _CATEGORY_OPTIONS = [
 ]
 
 
-class TaskForm(Vertical):
-    """Inline form for adding or editing a task."""
+class TaskForm(Container):
+    """Inline form: top container (fields) + bottom container (comment)."""
 
     BINDINGS = [
         Binding("ctrl+s", "save", "Save"),
@@ -43,7 +44,7 @@ class TaskForm(Vertical):
         subject_id: str,
         task_id: Optional[str] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(classes="item-form")
         self._db = db
         self._subject_id = subject_id
         self._task_id = task_id
@@ -61,39 +62,41 @@ class TaskForm(Vertical):
         if is_edit:
             initial_due_date = self._task.due_date or ""
         else:
-            initial_due_date = None  # DateInput will default to today
+            initial_due_date = None
 
-        yield Label(title, classes="form-title")
-        yield Input(value=initial_text, placeholder="Task text", id="task-text-input")
-        with Horizontal(classes="form-row"):
-            with Vertical():
-                yield Label("Priority", classes="field-label")
-                yield Select(
-                    options=_PRIORITY_OPTIONS,
-                    value=initial_priority,
-                    id="task-priority-select",
-                )
-            with Vertical():
-                yield Label("Category", classes="field-label")
-                yield Select(
-                    options=_CATEGORY_OPTIONS,
-                    value=initial_category if initial_category else Select.BLANK,
-                    allow_blank=True,
-                    id="task-category-select",
-                )
-            with Vertical():
-                yield Label("Due date", classes="field-label")
-                yield DateInput(
-                    value=initial_due_date,
-                    placeholder="YYYY-MM-DD",
-                    id="task-due-date-input",
-                )
-        yield Label("Comment", classes="field-label")
-        yield TextArea(
-            text=initial_comment or "",
-            language="markdown",
-            id="task-comment-area",
-        )
+        with Vertical(classes="item-form-fields"):
+            yield Label(title, classes="form-title")
+            yield Input(value=initial_text, placeholder="Task text", id="task-text-input")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("Priority", classes="field-label")
+                    yield Select(
+                        options=_PRIORITY_OPTIONS,
+                        value=initial_priority,
+                        id="task-priority-select",
+                    )
+                with Vertical():
+                    yield Label("Category", classes="field-label")
+                    yield Select(
+                        options=_CATEGORY_OPTIONS,
+                        value=initial_category if initial_category else Select.BLANK,
+                        allow_blank=True,
+                        id="task-category-select",
+                    )
+                with Vertical():
+                    yield Label("Due date", classes="field-label")
+                    yield DateInput(
+                        value=initial_due_date,
+                        placeholder="YYYY-MM-DD",
+                        id="task-due-date-input",
+                    )
+        with Container(classes="item-form-comment"):
+            yield Label("Comment", classes="field-label")
+            yield TextArea(
+                text=initial_comment or "",
+                language="markdown",
+                id="task-comment-area",
+            )
 
     def on_mount(self) -> None:
         self.query_one("#task-text-input", Input).focus()
@@ -103,50 +106,35 @@ class TaskForm(Vertical):
             self.action_save()
 
     def action_save(self) -> None:
-        text_input = self.query_one("#task-text-input", Input)
+        text = self.query_one("#task-text-input", Input).value.strip()
+        if not text:
+            self.notify("Task text cannot be empty.", severity="error")
+            return
+
         priority_select = self.query_one("#task-priority-select", Select)
         category_select = self.query_one("#task-category-select", Select)
         due_date_input = self.query_one("#task-due-date-input", DateInput)
         comment_area = self.query_one("#task-comment-area", TextArea)
 
-        text = text_input.value.strip()
-        if not text:
-            self.notify("Task text cannot be empty.", severity="error")
-            return
-
         priority = str(priority_select.value) if priority_select.value != Select.BLANK else "should"
-        category_val = category_select.value
-        category = str(category_val) if category_val != Select.BLANK else None
+        category = str(category_select.value) if category_select.value != Select.BLANK else None
         due_date = due_date_input.date_value
         comment = comment_area.text.strip() or None
 
         if self._task_id:
             self._db.update_task(
-                self._task_id,
-                text=text,
-                priority=priority,
-                category=category,
-                due_date=due_date,
-                comment=comment,
+                self._task_id, text=text, priority=priority,
+                category=category, due_date=due_date, comment=comment,
             )
             saved_id = self._task_id
         else:
             saved_id = self._db.add_task(
-                subject_id=self._subject_id,
-                text=text,
-                priority=priority,
-                category=category,
-                due_date=due_date,
-                comment=comment,
+                subject_id=self._subject_id, text=text, priority=priority,
+                category=category, due_date=due_date, comment=comment,
             )
 
         self.post_message(DataChanged())
-        self.post_message(
-            ContentSaved(
-                "task_form",
-                {"subject_id": self._subject_id, "task_id": saved_id},
-            )
-        )
+        self.post_message(ContentSaved("task_form", {"subject_id": self._subject_id, "task_id": saved_id}))
 
     def action_cancel(self) -> None:
         self.post_message(ContentCancelled())

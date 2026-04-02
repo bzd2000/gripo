@@ -6,15 +6,16 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical
+from textual.widget import Widget
 from textual.widgets import Input, Label, TextArea
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 
 
-class OpenPointForm(Vertical):
-    """Inline form for adding or editing an open point."""
+class OpenPointForm(Container):
+    """Inline form: top container (fields) + bottom container (comment)."""
 
     BINDINGS = [
         Binding("ctrl+s", "save", "Save"),
@@ -27,7 +28,7 @@ class OpenPointForm(Vertical):
         subject_id: str,
         point_id: Optional[str] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(classes="item-form")
         self._db = db
         self._subject_id = subject_id
         self._point_id = point_id
@@ -43,19 +44,21 @@ class OpenPointForm(Vertical):
         initial_resolved_note = self._point.resolved_note or "" if self._point else ""
         is_resolved = self._point.status == "resolved" if self._point else False
 
-        yield Label(title, classes="form-title")
-        with Horizontal(classes="form-row"):
-            with Vertical():
-                yield Label("Text", classes="field-label")
-                yield Input(value=initial_text, placeholder="Open point text", id="op-text-input")
-            with Vertical():
-                yield Label("Context", classes="field-label")
-                yield Input(value=initial_context, placeholder="Context (optional)", id="op-context-input")
-        if is_resolved:
-            yield Label("Resolution note", classes="field-label")
-            yield Input(value=initial_resolved_note, placeholder="Resolution note", id="op-resolved-note-input")
-        yield Label("Comment", classes="field-label")
-        yield TextArea(text=initial_comment, language="markdown", id="op-comment-area")
+        with Vertical(classes="item-form-fields"):
+            yield Label(title, classes="form-title")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("Text", classes="field-label")
+                    yield Input(value=initial_text, placeholder="Open point text", id="op-text-input")
+                with Vertical():
+                    yield Label("Context", classes="field-label")
+                    yield Input(value=initial_context, placeholder="Context (optional)", id="op-context-input")
+            if is_resolved:
+                yield Label("Resolution note", classes="field-label")
+                yield Input(value=initial_resolved_note, placeholder="Resolution note", id="op-resolved-note-input")
+        with Container(classes="item-form-comment"):
+            yield Label("Comment", classes="field-label")
+            yield TextArea(text=initial_comment, language="markdown", id="op-comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#op-text-input", Input).focus()
@@ -65,17 +68,13 @@ class OpenPointForm(Vertical):
             self.action_save()
 
     def action_save(self) -> None:
-        text_input = self.query_one("#op-text-input", Input)
-        context_input = self.query_one("#op-context-input", Input)
-        comment_area = self.query_one("#op-comment-area", TextArea)
-
-        text = text_input.value.strip()
+        text = self.query_one("#op-text-input", Input).value.strip()
         if not text:
             self.notify("Open point text cannot be empty.", severity="error")
             return
 
-        context = context_input.value.strip() or None
-        comment = comment_area.text.strip() or None
+        context = self.query_one("#op-context-input", Input).value.strip() or None
+        comment = self.query_one("#op-comment-area", TextArea).text.strip() or None
 
         if self._point_id:
             self._db.update_open_point_text(self._point_id, text)

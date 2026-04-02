@@ -6,7 +6,8 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical
+from textual.widget import Widget
 from textual.widgets import Input, Label, TextArea
 
 from tracker.db import Database
@@ -14,8 +15,8 @@ from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 from tracker.widgets.date_input import DateInput
 
 
-class FollowUpForm(Vertical):
-    """Inline form for adding or editing a follow-up."""
+class FollowUpForm(Container):
+    """Inline form: top container (fields) + bottom container (comment)."""
 
     BINDINGS = [
         Binding("ctrl+s", "save", "Save"),
@@ -28,7 +29,7 @@ class FollowUpForm(Vertical):
         subject_id: str,
         follow_up_id: Optional[str] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(classes="item-form")
         self._db = db
         self._subject_id = subject_id
         self._follow_up_id = follow_up_id
@@ -48,28 +49,30 @@ class FollowUpForm(Vertical):
             initial_due_by = fu.due_by or ""
             initial_asked_on = fu.asked_on
         else:
-            initial_due_by = None  # DateInput defaults to today
+            initial_due_by = None
             initial_asked_on = None
 
-        yield Label(title, classes="form-title")
-        with Horizontal(classes="form-row"):
-            with Vertical():
-                yield Label("What", classes="field-label")
-                yield Input(value=initial_text, placeholder="What are you waiting for?", id="fu-text-input")
-            with Vertical():
-                yield Label("Owner", classes="field-label")
-                yield Input(value=initial_owner, placeholder="Who?", id="fu-owner-input")
-        with Horizontal(classes="form-row"):
-            with Vertical():
-                yield Label("Due by", classes="field-label")
-                yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
-            with Vertical():
-                yield Label("Asked on", classes="field-label")
-                yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
-        yield Label("Notes", classes="field-label")
-        yield TextArea(text=initial_notes, id="fu-notes-area")
-        yield Label("Comment", classes="field-label")
-        yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area")
+        with Vertical(classes="item-form-fields"):
+            yield Label(title, classes="form-title")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("What", classes="field-label")
+                    yield Input(value=initial_text, placeholder="What are you waiting for?", id="fu-text-input")
+                with Vertical():
+                    yield Label("Owner", classes="field-label")
+                    yield Input(value=initial_owner, placeholder="Who?", id="fu-owner-input")
+            with Horizontal(classes="form-row"):
+                with Vertical():
+                    yield Label("Due by", classes="field-label")
+                    yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
+                with Vertical():
+                    yield Label("Asked on", classes="field-label")
+                    yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
+            yield Label("Notes", classes="field-label")
+            yield TextArea(text=initial_notes, id="fu-notes-area")
+        with Container(classes="item-form-comment"):
+            yield Label("Comment", classes="field-label")
+            yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area")
 
     def on_mount(self) -> None:
         self.query_one("#fu-text-input", Input).focus()
@@ -79,25 +82,19 @@ class FollowUpForm(Vertical):
             self.action_save()
 
     def action_save(self) -> None:
-        text_input = self.query_one("#fu-text-input", Input)
-        owner_input = self.query_one("#fu-owner-input", Input)
-        due_by_input = self.query_one("#fu-due-by-input", DateInput)
-        notes_area = self.query_one("#fu-notes-area", TextArea)
-        comment_area = self.query_one("#fu-comment-area", TextArea)
-
-        text = text_input.value.strip()
+        text = self.query_one("#fu-text-input", Input).value.strip()
         if not text:
             self.notify("Follow-up text cannot be empty.", severity="error")
             return
 
-        owner = owner_input.value.strip()
+        owner = self.query_one("#fu-owner-input", Input).value.strip()
         if not owner:
             self.notify("Owner cannot be empty.", severity="error")
             return
 
-        due_by = due_by_input.date_value
-        notes = notes_area.text.strip() or None
-        comment = comment_area.text.strip() or None
+        due_by = self.query_one("#fu-due-by-input", DateInput).date_value
+        notes = self.query_one("#fu-notes-area", TextArea).text.strip() or None
+        comment = self.query_one("#fu-comment-area", TextArea).text.strip() or None
 
         if self._follow_up_id:
             self._db.update_follow_up(self._follow_up_id, text=text, owner=owner, due_by=due_by)

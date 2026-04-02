@@ -86,7 +86,7 @@ Collapsible {
     margin-bottom: 1;
 }
 
-/* ── Main grid layout (following Textual combining_layouts pattern) ─── */
+/* ── Main grid: left pane (tree) + right pane (details) ──────────────── */
 
 #app-grid {
     layout: grid;
@@ -95,16 +95,17 @@ Collapsible {
     grid-rows: 1fr;
 }
 
+/* Left pane */
 NavTree {
     width: 100%;
     height: 100%;
     border-right: solid $primary;
 }
 
+/* Right pane */
 ContentArea {
     width: 100%;
     height: 100%;
-    padding: 1 2;
 }
 
 ContentArea > * {
@@ -112,7 +113,39 @@ ContentArea > * {
     height: 100%;
 }
 
-/* ── Form styles ─────────────────────────────────────────────────────── */
+/* ── Item forms: top (fields) + bottom (comment) ─────────────────────── */
+
+/* The form itself is a 2-row grid: fields on top, comment fills bottom */
+.item-form {
+    layout: grid;
+    grid-size: 1 2;
+    grid-rows: auto 1fr;
+    width: 100%;
+    height: 100%;
+}
+
+.item-form-fields {
+    height: 100%;
+    padding: 0 1;
+}
+
+.item-form-comment {
+    height: 100%;
+    padding: 0 1;
+}
+
+.item-form-comment TextArea {
+    width: 100%;
+    height: 100%;
+}
+
+/* ── Form field styling ──────────────────────────────────────────────── */
+
+/* NoteEditor: TextArea fills the whole pane */
+NoteEditor TextArea {
+    width: 100%;
+    height: 100%;
+}
 
 .form-title {
     text-style: bold;
@@ -120,14 +153,6 @@ ContentArea > * {
 
 .field-label {
     color: $text-muted;
-}
-
-/* In forms, TextArea fills remaining vertical space */
-TaskForm > TextArea,
-OpenPointForm > TextArea,
-FollowUpForm > TextArea,
-NoteEditor > TextArea {
-    height: 1fr;
 }
 
 .form-row {
@@ -144,7 +169,7 @@ NoteEditor > TextArea {
     margin-right: 0;
 }
 
-/* ── SubjectOverview section headers ─────────────────────────────────── */
+/* ── SubjectOverview / list views: single full container ─────────────── */
 
 .section-header {
     text-style: bold;
