@@ -1,0 +1,93 @@
+/* Priority classes */
+.priority-must {
+    color: $error;
+}
+
+.priority-should {
+    color: $warning;
+}
+
+.priority-if-time {
+    color: $text-muted;
+}
+
+/* Status classes */
+.status-done {
+    color: $success;
+    text-style: line-through;
+}
+
+.status-blocked {
+    color: $error;
+    text-style: bold;
+}
+
+.status-in-progress {
+    color: $accent;
+}
+
+.status-open {
+    color: $primary;
+}
+
+.status-parked {
+    color: $text-muted;
+    text-style: italic;
+}
+
+.status-resolved {
+    color: $success;
+    text-style: line-through;
+}
+
+.status-overdue {
+    color: $error;
+    text-style: bold;
+}
+
+/* Subject pin indicator */
+.subject-pinned {
+    color: $accent;
+    text-style: bold;
+}
+
+/* Modal styles */
+ModalScreen {
+    align: center middle;
+}
+
+.modal-dialog {
+    background: $surface;
+    border: thick $primary;
+    padding: 1 2;
+    width: 60;
+    height: auto;
+    max-height: 80%;
+}
+
+.modal-dialog Input {
+    margin: 1 0;
+}
+
+.modal-dialog Button {
+    margin: 1 1 0 0;
+}
+
+/* Empty state */
+.empty-state {
+    color: $text-muted;
+    text-align: center;
+    content-align: center middle;
+    width: 100%;
+}
+
+/* Subject header */
+.subject-header {
+    dock: top;
+    padding: 0 1;
+}
+
+/* Collapsible spacing */
+Collapsible {
+    margin-bottom: 1;
+}
