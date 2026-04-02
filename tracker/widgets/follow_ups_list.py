@@ -5,10 +5,8 @@ from __future__ import annotations
 from textual.widgets import Label, ListItem, ListView
 
 from tracker.db import Database
-from tracker.messages import DataChanged
+from tracker.messages import DataChanged, ShowContent
 from tracker.models import FollowUp
-from tracker.screens.add_follow_up import AddFollowUpScreen
-from tracker.screens.add_note import AddNoteScreen
 from tracker.screens.confirm import ConfirmScreen
 
 _STATUS_ICON = {
@@ -92,45 +90,13 @@ class FollowUpsList(ListView):
     # ------------------------------------------------------------------
 
     def action_add_follow_up(self) -> None:
-        def _on_result(data) -> None:
-            if data:
-                self._db.add_follow_up(
-                    subject_id=self._subject_id,
-                    text=data.text,
-                    owner=data.owner,
-                    due_by=data.due_by,
-                )
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Follow-up added")
-
-        self.app.push_screen(AddFollowUpScreen(), _on_result)
+        self.post_message(ShowContent(content_type="follow_up_form", data={"subject_id": self._subject_id}))
 
     def action_edit_follow_up(self) -> None:
         fu = self._highlighted_follow_up()
         if not fu:
             return
-
-        def _on_result(data) -> None:
-            if data:
-                self._db.update_follow_up(
-                    fu.id,
-                    text=data.text,
-                    owner=data.owner,
-                    due_by=data.due_by,
-                )
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Follow-up updated")
-
-        self.app.push_screen(
-            AddFollowUpScreen(
-                text=fu.text,
-                owner=fu.owner,
-                due_by=fu.due_by or "",
-            ),
-            _on_result,
-        )
+        self.post_message(ShowContent(content_type="follow_up_form", data={"subject_id": self._subject_id, "follow_up_id": fu.id}))
 
     def action_cycle_status(self) -> None:
         fu = self._highlighted_follow_up()
@@ -146,15 +112,7 @@ class FollowUpsList(ListView):
         fu = self._highlighted_follow_up()
         if not fu:
             return
-
-        def _on_result(content: str | None) -> None:
-            if content is not None:
-                self._db.update_follow_up_notes(fu.id, content or None)
-                self._refresh_list()
-                self.post_message(DataChanged())
-                self.notify("Follow-up notes updated")
-
-        self.app.push_screen(AddNoteScreen(initial_content=fu.notes or ""), _on_result)
+        self.post_message(ShowContent(content_type="follow_up_form", data={"subject_id": self._subject_id, "follow_up_id": fu.id}))
 
     def action_delete_follow_up(self) -> None:
         fu = self._highlighted_follow_up()
