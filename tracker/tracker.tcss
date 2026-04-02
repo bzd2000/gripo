@@ -117,6 +117,11 @@ ContentArea > * {
 
 /* ── Form styles ─────────────────────────────────────────────────────── */
 
+TaskForm, OpenPointForm, FollowUpForm, NoteEditor, SubjectForm {
+    height: 1fr;
+    layout: vertical;
+}
+
 .form-container {
     height: 1fr;
     padding: 0 1;
