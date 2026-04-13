@@ -5,6 +5,7 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
+from textual.containers import Vertical
 from textual.widgets import Input, Label, ListItem, ListView
 
 from tracker.db import Database
@@ -52,8 +53,9 @@ class SearchScreen(ModalScreen):
         self._results: list[dict] = []
 
     def compose(self) -> ComposeResult:
-        yield Input(placeholder="Search... (min 2 chars)", id="search-input")
-        yield ListView(id="search-results")
+        with Vertical(classes="modal-dialog"):
+            yield Input(placeholder="Search... (min 2 chars)", id="search-input")
+            yield ListView(id="search-results")
 
     def on_mount(self) -> None:
         self.query_one("#search-input", Input).focus()

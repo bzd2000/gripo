@@ -9,7 +9,8 @@ from textual.binding import Binding
 from textual.containers import Container
 from textual.widgets import Input, Label
 
-from tracker.db import Database
+from tracker.db import SENTINEL, Database
+
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 from tracker.widgets.comment_editor import CommentEditor
 
@@ -72,16 +73,16 @@ class OpenPointForm(Container):
         comment = self.query_one("#op-comment-editor", CommentEditor).text.strip() or None
 
         if self._point_id:
-            self._db.update_open_point_text(self._point_id, text)
-            self._db.update_open_point_context(self._point_id, context)
-            self._db.update_open_point_comment(self._point_id, comment)
+            resolved_note = SENTINEL
             try:
                 resolved_note_input = self.query_one("#op-resolved-note-input", Input)
                 resolved_note = resolved_note_input.value.strip() or None
-                if resolved_note:
-                    self._db.resolve_open_point(self._point_id, resolved_note)
             except Exception:
                 pass
+            self._db.update_open_point(
+                self._point_id, text=text, context=context,
+                comment=comment, resolved_note=resolved_note,
+            )
             saved_id = self._point_id
         else:
             saved_id = self._db.add_open_point(

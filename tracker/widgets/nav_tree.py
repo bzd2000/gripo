@@ -45,9 +45,10 @@ class NavTree(Tree):
     BINDINGS = [
         Binding("p", "toggle_pin", "Toggle pin"),
         Binding("e", "edit_subject", "Edit"),
-        Binding("x", "archive_subject", "Archive"),
+        Binding("x", "toggle_archive", "Archive/Unarchive"),
         Binding("a", "add", "Add"),
         Binding("A", "toggle_archived", "Toggle archived"),
+        Binding("escape", "go_up", "Go up"),
     ]
 
     def __init__(self, db: Database) -> None:
@@ -127,16 +128,12 @@ class NavTree(Tree):
 
     def refresh_tree(self) -> None:
         """Rebuild while preserving expanded state and current selection."""
-        # Collect expanded node labels
-        self._expanded_paths = self._collect_expanded_paths(self.root)
-        # Remember current cursor
+        expanded_ids = self._collect_expanded_ids(self.root)
         current_node = self.cursor_node
         current_data = current_node.data if current_node else None
 
         self.rebuild()
-        # Restore expansion
-        self._restore_expanded_paths(self.root, self._expanded_paths)
-        # Try to restore cursor by matching data
+        self._restore_expanded_ids(self.root, expanded_ids)
         if current_data:
             self._restore_cursor(self.root, current_data)
 
@@ -256,23 +253,25 @@ class NavTree(Tree):
                 },
             )
 
-    def _collect_expanded_paths(self, node: TreeNode, prefix: str = "") -> set[str]:
-        """Collect string labels of all expanded nodes."""
+    def _collect_expanded_ids(self, node: TreeNode) -> set[str]:
+        """Collect data IDs of all expanded nodes."""
         expanded = set()
-        path = f"{prefix}/{node.label}"
-        if node.is_expanded:
-            expanded.add(path)
+        if node.is_expanded and node.data:
+            node_id = node.data.get("id")
+            if node_id:
+                expanded.add(node_id)
         for child in node.children:
-            expanded |= self._collect_expanded_paths(child, path)
+            expanded |= self._collect_expanded_ids(child)
         return expanded
 
-    def _restore_expanded_paths(self, node: TreeNode, expanded: set[str], prefix: str = "") -> None:
-        """Re-expand nodes that were expanded before rebuild."""
-        path = f"{prefix}/{node.label}"
-        if path in expanded:
-            node.expand()
+    def _restore_expanded_ids(self, node: TreeNode, expanded: set[str]) -> None:
+        """Re-expand nodes whose data ID was expanded before rebuild."""
+        if node.data:
+            node_id = node.data.get("id")
+            if node_id and node_id in expanded:
+                node.expand()
         for child in node.children:
-            self._restore_expanded_paths(child, expanded, path)
+            self._restore_expanded_ids(child, expanded)
 
     def _restore_cursor(self, node: TreeNode, target_data: dict) -> bool:
         """Move cursor to a node matching target_data. Returns True if found."""
@@ -452,21 +451,23 @@ class NavTree(Tree):
         if subject_id:
             self.post_message(ShowContent("subject_form", {"subject_id": subject_id}))
 
-    def action_archive_subject(self) -> None:
+    def action_toggle_archive(self) -> None:
         subject_id = self._current_subject_id()
         if not subject_id:
             return
-        node = self.cursor_node
-        if node and node.data and node.data.get("type") == "subject":
-            from tracker.screens.confirm import ConfirmScreen
+        subject = self._db.get_subject(subject_id)
+        if not subject:
+            return
+        action = "Unarchive" if subject.archived else "Archive"
+        from tracker.screens.confirm import ConfirmScreen
 
-            def _on_confirm(confirmed: bool) -> None:
-                if confirmed:
-                    self._db.archive_subject(subject_id)
-                    self.post_message(DataChanged())
-                    self.refresh_tree()
+        def _on_confirm(confirmed: bool) -> None:
+            if confirmed:
+                self._db.toggle_archive(subject_id)
+                self.post_message(DataChanged())
+                self.refresh_tree()
 
-            self.app.push_screen(ConfirmScreen("Archive this subject?"), _on_confirm)
+        self.app.push_screen(ConfirmScreen(f"{action} this subject?"), _on_confirm)
 
     def action_add(self) -> None:
         """Context-aware add: adds the right type based on current tree position."""
@@ -506,6 +507,27 @@ class NavTree(Tree):
         # Root level → add subject
         else:
             self.post_message(ShowContent("subject_form", {}))
+
+    def action_go_up(self) -> None:
+        """Move cursor to parent node and show its content."""
+        node = self.cursor_node
+        if not node or node == self.root:
+            return
+        parent = node.parent
+        if not parent:
+            return
+        # Skip type_group nodes — go straight to root/overview
+        if parent == self.root or (parent.data and parent.data.get("type") == "type_group"):
+            if parent.data and parent.data.get("type") == "type_group":
+                # On a subject node → go to overview
+                self.move_cursor(self.root)
+            else:
+                self.move_cursor(self.root)
+            self.post_message(ShowContent("overview", {}))
+        else:
+            self.move_cursor(parent)
+            if parent.data:
+                self.on_tree_node_selected(Tree.NodeSelected(parent))
 
     def action_toggle_archived(self) -> None:
         self._show_archived = not self._show_archived

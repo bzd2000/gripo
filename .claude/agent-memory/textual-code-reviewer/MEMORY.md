@@ -1,0 +1,1 @@
+- [Tracker TUI Architecture Patterns](project_architecture.md) — widget data attachment, form/list patterns, DB conventions

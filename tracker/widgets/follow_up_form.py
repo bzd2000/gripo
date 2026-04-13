@@ -100,6 +100,7 @@ class FollowUpForm(Container):
             return
 
         due_by = self.query_one("#fu-due-by-input", DateInput).date_value
+        asked_on = self.query_one("#fu-asked-on-input", DateInput).date_value
         notes = self.query_one("#fu-notes-area", TextArea).text.strip() or None
         comment = self.query_one("#fu-comment-editor", CommentEditor).text.strip() or None
 
@@ -112,7 +113,7 @@ class FollowUpForm(Container):
             pass
 
         if self._follow_up_id:
-            self._db.update_follow_up(self._follow_up_id, text=text, owner=owner, due_by=due_by)
+            self._db.update_follow_up(self._follow_up_id, text=text, owner=owner, due_by=due_by, asked_on=asked_on)
             self._db.update_follow_up_notes(self._follow_up_id, notes)
             self._db.update_follow_up_comment(self._follow_up_id, comment)
             self._db.link_follow_up_to_milestone(self._follow_up_id, milestone_id)

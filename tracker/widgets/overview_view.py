@@ -14,41 +14,30 @@ from textual.widgets import Label, ListItem, ListView, Static
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, DataChanged, ShowContent
+from tracker.constants import (
+    DAYS,
+    DAY_LABELS,
+    FUTASK_STATUS_ICON,
+    PRIORITY_CYCLE,
+    STATUS_CYCLE,
+    TASKTASK_STATUS_ICON,
+)
 from tracker.models import FollowUp, Milestone, Task
-
-_STATUS_ICON = {
-    "todo": "○",
-    "in-progress": "●",
-    "done": "✓",
-    "blocked": "✗",
-}
-
-_FU_STATUS_ICON = {
-    "waiting": "⏳",
-    "received": "✓",
-    "overdue": "‼",
-    "cancelled": "✗",
-}
-
-_STATUS_CYCLE = ["todo", "in-progress", "done", "blocked"]
-_PRIORITY_CYCLE = ["must", "should", "if-time"]
-_DAYS = ["mon", "tue", "wed", "thu", "fri"]
-_DAY_LABELS = {"mon": "MON", "tue": "TUE", "wed": "WED", "thu": "THU", "fri": "FRI"}
 
 
 def _task_label(task: Task, show_subject: bool = False) -> str:
-    icon = _STATUS_ICON.get(task.status, "?")
+    icon = TASK_STATUS_ICON.get(task.status, "?")
     subject = f" [{task.subject_name}]" if show_subject and task.subject_name else ""
     return f"{icon} {task.text} [{task.priority}]{subject}"
 
 
 def _short_task_label(task: Task) -> str:
-    icon = _STATUS_ICON.get(task.status, "?")
+    icon = TASK_STATUS_ICON.get(task.status, "?")
     return f"{icon} {task.text}"
 
 
 def _follow_up_label(fu: FollowUp, show_subject: bool = False) -> str:
-    icon = _FU_STATUS_ICON.get(fu.status, "?")
+    icon = _FUTASK_STATUS_ICON.get(fu.status, "?")
     subject = f" [{fu.subject_name}]" if show_subject and fu.subject_name else ""
     return f"{icon} {fu.text} — {fu.owner}{subject}"
 
@@ -215,11 +204,11 @@ class OverviewView(Container, can_focus=True):
 
         # Row 2: Week (Mon-Fri)
         with Container(id="week-row"):
-            for i, day in enumerate(_DAYS):
+            for i, day in enumerate(DAYS):
                 day_date = this_monday + timedelta(days=i)
                 day_str = day_date.strftime("%d/%m")
                 with Vertical(classes="week-day-col"):
-                    yield Label(f"{_DAY_LABELS[day]} {day_str}", classes="overview-col-header")
+                    yield Label(f"{DAY_LABELS[day]} {day_str}", classes="overview-col-header")
                     yield _ItemList(id=f"ov-week-{day}")
 
         # Row 3: Milestones Gantt
@@ -297,11 +286,11 @@ class OverviewView(Container, can_focus=True):
 
         # ── Row 2: Week ──
         today_task_ids = {t.id for t in today_tasks}
-        by_day: dict[str, List[Task]] = {d: [] for d in _DAYS}
+        by_day: dict[str, List[Task]] = {d: [] for d in DAYS}
         for task in week_tasks:
             if task.id in today_task_ids:
                 continue
-            day = task.day if task.day in _DAYS else None
+            day = task.day if task.day in DAYS else None
             if day:
                 by_day[day].append(task)
             elif task.due_date:
@@ -309,22 +298,22 @@ class OverviewView(Container, can_focus=True):
                     d = date.fromisoformat(task.due_date)
                     weekday_idx = d.weekday()
                     if weekday_idx < 5:
-                        by_day[_DAYS[weekday_idx]].append(task)
+                        by_day[DAYS[weekday_idx]].append(task)
                 except ValueError:
                     pass
 
-        fus_by_day: dict[str, List[FollowUp]] = {d: [] for d in _DAYS}
+        fus_by_day: dict[str, List[FollowUp]] = {d: [] for d in DAYS}
         for fu in week_fus:
             if fu.due_by:
                 try:
                     d = date.fromisoformat(fu.due_by)
                     weekday_idx = d.weekday()
                     if weekday_idx < 5:
-                        fus_by_day[_DAYS[weekday_idx]].append(fu)
+                        fus_by_day[DAYS[weekday_idx]].append(fu)
                 except ValueError:
                     pass
 
-        for day in _DAYS:
+        for day in DAYS:
             dl = self.query_one(f"#ov-week-{day}", _ItemList)
             dl.clear()
             day_tasks = by_day[day]
@@ -339,7 +328,7 @@ class OverviewView(Container, can_focus=True):
                     )
                     dl.append(_make_item(task.id, task.subject_id, "task", label))
                 for fu in day_fus:
-                    icon = _FU_STATUS_ICON.get(fu.status, "?")
+                    icon = _FUTASK_STATUS_ICON.get(fu.status, "?")
                     label = Label(f"{icon} {fu.text}")
                     dl.append(_make_item(fu.id, fu.subject_id, "follow_up", label))
 
@@ -402,8 +391,8 @@ class OverviewView(Container, can_focus=True):
         task = self._highlighted_task()
         if not task:
             return
-        idx = _STATUS_CYCLE.index(task.status) if task.status in _STATUS_CYCLE else 0
-        new_status = _STATUS_CYCLE[(idx + 1) % len(_STATUS_CYCLE)]
+        idx = STATUS_CYCLE.index(task.status) if task.status in STATUS_CYCLE else 0
+        new_status = STATUS_CYCLE[(idx + 1) % len(STATUS_CYCLE)]
         self._db.update_task_status(task.id, new_status)
         self._refresh()
         self.post_message(DataChanged())
@@ -413,8 +402,8 @@ class OverviewView(Container, can_focus=True):
         task = self._highlighted_task()
         if not task:
             return
-        idx = _PRIORITY_CYCLE.index(task.priority) if task.priority in _PRIORITY_CYCLE else 0
-        new_priority = _PRIORITY_CYCLE[(idx + 1) % len(_PRIORITY_CYCLE)]
+        idx = PRIORITY_CYCLE.index(task.priority) if task.priority in PRIORITY_CYCLE else 0
+        new_priority = PRIORITY_CYCLE[(idx + 1) % len(PRIORITY_CYCLE)]
         self._db.update_task_priority(task.id, new_priority)
         self._refresh()
         self.post_message(DataChanged())

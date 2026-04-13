@@ -94,7 +94,13 @@ class MilestoneForm(Container):
 
         target_date = self.query_one("#ms-date-input", DateInput).date_value
         lead_weeks_str = self.query_one("#ms-lead-weeks-input", Input).value.strip()
-        lead_weeks = int(lead_weeks_str) if lead_weeks_str.isdigit() else None
+        lead_weeks = None
+        if lead_weeks_str:
+            if lead_weeks_str.isdigit():
+                lead_weeks = int(lead_weeks_str)
+            else:
+                self.notify("Lead weeks must be a number.", severity="error")
+                return
         comment = self.query_one("#ms-comment-editor", CommentEditor).text.strip() or None
 
         if self._milestone_id:

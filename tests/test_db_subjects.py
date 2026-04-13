@@ -54,7 +54,7 @@ def test_get_subject_unknown_returns_none(db: Database) -> None:
 def test_list_subjects_excludes_archived_by_default(db: Database) -> None:
     db.add_subject(name="Active")
     archived_id = db.add_subject(name="Archived")
-    db.archive_subject(archived_id)
+    db.toggle_archive(archived_id)
 
     subjects = db.list_subjects()
     names = [s.name for s in subjects]
@@ -65,7 +65,7 @@ def test_list_subjects_excludes_archived_by_default(db: Database) -> None:
 def test_list_subjects_includes_archived_when_requested(db: Database) -> None:
     db.add_subject(name="Active")
     archived_id = db.add_subject(name="Archived")
-    db.archive_subject(archived_id)
+    db.toggle_archive(archived_id)
 
     subjects = db.list_subjects(include_archived=True)
     names = [s.name for s in subjects]
@@ -132,14 +132,14 @@ def test_pinned_subjects_sort_first(db: Database) -> None:
 
 def test_archive_subject_sets_archived_flag(db: Database) -> None:
     subject_id = db.add_subject(name="ToArchive")
-    db.archive_subject(subject_id)
+    db.toggle_archive(subject_id)
     subject = db.get_subject(subject_id)
     assert subject.archived is True
 
 
 def test_archived_subject_excluded_from_default_list(db: Database) -> None:
     subject_id = db.add_subject(name="ToArchive2")
-    db.archive_subject(subject_id)
+    db.toggle_archive(subject_id)
     names = [s.name for s in db.list_subjects()]
     assert "ToArchive2" not in names
 
@@ -148,11 +148,11 @@ def test_archived_subject_excluded_from_default_list(db: Database) -> None:
 # soft_delete_subject (with cascade)
 # ---------------------------------------------------------------------------
 
-def test_soft_delete_subject_sets_deleted_at(db: Database) -> None:
+def test_soft_delete_subject_hides_from_get(db: Database) -> None:
     subject_id = db.add_subject(name="ToDelete")
     db.soft_delete_subject(subject_id)
     subject = db.get_subject(subject_id)
-    assert subject.deleted_at is not None
+    assert subject is None
 
 
 def test_soft_delete_cascades_to_tasks(db: Database) -> None:

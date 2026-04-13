@@ -22,7 +22,7 @@ class ContentArea(Container):
     # Public API
     # ------------------------------------------------------------------
 
-    def show(self, widget: Widget) -> None:
+    def set_content(self, widget: Widget) -> None:
         """Replace current content with the given widget."""
         self.remove_children()
         self.mount(widget)
@@ -38,16 +38,27 @@ class ContentArea(Container):
         self._current_data = message.data
         widget = self._create_widget(message.content_type, message.data)
         if widget is not None:
-            self.show(widget)
+            self.set_content(widget)
 
     def on_content_saved(self, message: ContentSaved) -> None:
-        """Navigate back to the parent list after a save."""
+        """Navigate back to the parent list after a save, then reveal the item in tree."""
         self._navigate_to_parent(message.content_type, message.data)
+        # Reveal the saved item in the tree after a short delay (tree needs to rebuild first)
+        from tracker.widgets.nav_tree import NavTree
+        try:
+            nav = self.app.query_one(NavTree)
+            nav.set_timer(0.15, lambda: nav.reveal_content(message.content_type, message.data))
+        except Exception:
+            pass
 
     def on_content_cancelled(self, message: ContentCancelled) -> None:
-        """Navigate back to the parent list after cancellation."""
-        if self._current_content_type is not None:
-            self._navigate_to_parent(self._current_content_type, self._current_data)
+        """First Escape: focus tree on current node. Tree handles further navigation."""
+        from tracker.widgets.nav_tree import NavTree
+        try:
+            nav = self.app.query_one(NavTree)
+            nav.focus()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Widget factory
@@ -181,7 +192,7 @@ class ContentArea(Container):
             if widget is not None:
                 self._current_content_type = parent_type
                 self._current_data = parent_data
-                self.show(widget)
+                self.set_content(widget)
                 # Update tree cursor to match
                 try:
                     nav = self.app.query_one(NavTree)

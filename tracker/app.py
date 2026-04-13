@@ -45,11 +45,7 @@ class TrackerApp(App):
         rolled = self.db.perform_week_rollover()
         if rolled:
             self.notify("Week rolled over — tasks reset for the new week.")
-        # Build the nav tree
-        try:
-            self.query_one(NavTree).rebuild()
-        except Exception:
-            pass
+        self.query_one(NavTree).rebuild()
         # Show Today view initially
         self.query_one(ContentArea).on_show_content(
             ShowContent(content_type="overview", data={})
@@ -65,10 +61,10 @@ class TrackerApp(App):
 
     def on_data_changed(self, message: DataChanged) -> None:
         """Refresh the nav tree when data changes."""
-        try:
-            self.query_one(NavTree).refresh_tree()
-        except Exception:
-            pass
+        self.query_one(NavTree).refresh_tree()
+
+    def on_unmount(self) -> None:
+        self.db.close()
 
     def action_focus_tree(self) -> None:
         try:

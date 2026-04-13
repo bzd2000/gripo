@@ -229,12 +229,12 @@ OverviewView {
     border: solid #1a3a1a;
 }
 
-#gantt-header {
+#ov-gantt-header {
     height: auto;
     padding: 0 1;
 }
 
-#gantt-list {
+#ov-gantt-list {
     height: 1fr;
 }
 
@@ -394,7 +394,7 @@ TextArea:focus {
 
 NoteEditor TextArea {
     width: 100%;
-    height: 100%;
+    height: 1fr;
 }
 
 /* ── Section headers ──────────────────────────────────────────────── */

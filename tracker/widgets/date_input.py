@@ -27,7 +27,7 @@ class DateInput(Input):
         *args,
         **kwargs,
     ) -> None:
-        initial = value if value else date.today().isoformat()
+        initial = value if value is not None else date.today().isoformat()
         super().__init__(value=initial, *args, **kwargs)
 
     # ------------------------------------------------------------------

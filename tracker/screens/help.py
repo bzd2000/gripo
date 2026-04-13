@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import ScrollableContainer
+from textual.containers import ScrollableContainer, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
@@ -88,8 +88,9 @@ class HelpScreen(ModalScreen):
     ]
 
     def compose(self) -> ComposeResult:
-        with ScrollableContainer(id="help-container"):
-            yield Static(_HELP_TEXT, id="help-content")
+        with Vertical(classes="modal-dialog"):
+            with ScrollableContainer(id="help-container"):
+                yield Static(_HELP_TEXT, id="help-content")
 
     def action_close(self) -> None:
         self.dismiss()

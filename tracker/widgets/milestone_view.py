@@ -7,24 +7,8 @@ from textual.containers import Container, Vertical
 from textual.widgets import Label, ListItem, ListView, Static
 
 from tracker.db import Database
+from tracker.constants import FU_STATUS_ICON, PRIORITY_CYCLE, STATUS_CYCLE, TASK_STATUS_ICON
 from tracker.messages import ContentCancelled, DataChanged, ShowContent
-
-_TASK_STATUS_ICON = {
-    "todo": "○",
-    "in-progress": "●",
-    "done": "✓",
-    "blocked": "✗",
-}
-
-_FU_STATUS_ICON = {
-    "waiting": "⏳",
-    "received": "✓",
-    "overdue": "‼",
-    "cancelled": "✗",
-}
-
-_STATUS_CYCLE = ["todo", "in-progress", "done", "blocked"]
-_PRIORITY_CYCLE = ["must", "should", "if-time"]
 
 
 class _ItemList(ListView):
@@ -111,7 +95,7 @@ class MilestoneView(Container, can_focus=True):
         tasks = self._db.list_milestone_tasks(mid)
         if tasks:
             for t in tasks:
-                icon = _TASK_STATUS_ICON.get(t.status, "?")
+                icon = TASK_STATUS_ICON.get(t.status, "?")
                 label = Label(
                     f"{icon} {t.text} [{t.priority}]",
                     classes=f"priority-{t.priority} status-{t.status}",
@@ -125,7 +109,7 @@ class MilestoneView(Container, can_focus=True):
         fus = self._db.list_milestone_follow_ups(mid)
         if fus:
             for fu in fus:
-                icon = _FU_STATUS_ICON.get(fu.status, "?")
+                icon = FU_STATUS_ICON.get(fu.status, "?")
                 due = f" due:{fu.due_by}" if fu.due_by else ""
                 label = Label(f"{icon} {fu.text} — {fu.owner}{due}")
                 fl.append(_make_item(label, fu.id, sid, "follow_up"))
@@ -168,8 +152,8 @@ class MilestoneView(Container, can_focus=True):
         task = self._highlighted_task()
         if not task:
             return
-        idx = _STATUS_CYCLE.index(task.status) if task.status in _STATUS_CYCLE else 0
-        new_status = _STATUS_CYCLE[(idx + 1) % len(_STATUS_CYCLE)]
+        idx = STATUS_CYCLE.index(task.status) if task.status in STATUS_CYCLE else 0
+        new_status = STATUS_CYCLE[(idx + 1) % len(STATUS_CYCLE)]
         self._db.update_task_status(task.id, new_status)
         self._refresh()
         self.post_message(DataChanged())
@@ -178,8 +162,8 @@ class MilestoneView(Container, can_focus=True):
         task = self._highlighted_task()
         if not task:
             return
-        idx = _PRIORITY_CYCLE.index(task.priority) if task.priority in _PRIORITY_CYCLE else 0
-        new_priority = _PRIORITY_CYCLE[(idx + 1) % len(_PRIORITY_CYCLE)]
+        idx = PRIORITY_CYCLE.index(task.priority) if task.priority in PRIORITY_CYCLE else 0
+        new_priority = PRIORITY_CYCLE[(idx + 1) % len(PRIORITY_CYCLE)]
         self._db.update_task_priority(task.id, new_priority)
         self._refresh()
         self.post_message(DataChanged())

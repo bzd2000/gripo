@@ -10,7 +10,7 @@ from typing import List, Optional, Union
 
 from tracker.models import FollowUp, Milestone, Note, OpenPoint, Subject, Task
 
-_SENTINEL = object()
+SENTINEL = object()
 
 _SCHEMA = """
 PRAGMA journal_mode = WAL;
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS subjects (
 
 CREATE TABLE IF NOT EXISTS tasks (
     id            TEXT PRIMARY KEY,
-    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT,
     text          TEXT NOT NULL,
     priority      TEXT NOT NULL DEFAULT 'should' CHECK (priority IN ('must', 'should', 'if-time')),
     status        TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in-progress', 'done', 'blocked')),
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE TABLE IF NOT EXISTS open_points (
     id            TEXT PRIMARY KEY,
-    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT,
     text          TEXT NOT NULL,
     context       TEXT,
     status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'parked')),
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS open_points (
 
 CREATE TABLE IF NOT EXISTS follow_ups (
     id            TEXT PRIMARY KEY,
-    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT,
     text          TEXT NOT NULL,
     owner         TEXT NOT NULL,
     asked_on      TEXT NOT NULL DEFAULT (date('now')),
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
 
 CREATE TABLE IF NOT EXISTS notes (
     id            TEXT PRIMARY KEY,
-    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT,
     content       TEXT NOT NULL,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS notes (
 
 CREATE TABLE IF NOT EXISTS milestones (
     id            TEXT PRIMARY KEY,
-    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT,
     name          TEXT NOT NULL,
     target_date   TEXT,
     lead_weeks    INTEGER,
@@ -119,6 +119,10 @@ class Database:
         self.conn.executescript(_SCHEMA)
         self._migrate()
         self.conn.commit()
+
+    def close(self) -> None:
+        """Close the database connection."""
+        self.conn.close()
 
     def _migrate(self) -> None:
         """Run forward-only migrations for schema changes."""
@@ -176,7 +180,7 @@ class Database:
 
     def get_subject(self, subject_id: str) -> Optional[Subject]:
         row = self.conn.execute(
-            "SELECT * FROM subjects WHERE id = ?", (subject_id,)
+            "SELECT * FROM subjects WHERE id = ? AND deleted_at IS NULL", (subject_id,)
         ).fetchone()
         return Subject.from_row(row) if row else None
 
@@ -236,9 +240,10 @@ class Database:
         )
         self.conn.commit()
 
-    def archive_subject(self, subject_id: str) -> None:
+    def toggle_archive(self, subject_id: str) -> None:
         self.conn.execute(
-            "UPDATE subjects SET archived = 1 WHERE id = ?", (subject_id,)
+            "UPDATE subjects SET archived = CASE WHEN archived = 1 THEN 0 ELSE 1 END WHERE id = ?",
+            (subject_id,),
         )
         self.conn.commit()
 
@@ -285,7 +290,7 @@ class Database:
 
     def get_task(self, task_id: str) -> Optional[Task]:
         row = self.conn.execute(
-            "SELECT * FROM tasks WHERE id = ?", (task_id,)
+            "SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL", (task_id,)
         ).fetchone()
         return Task.from_row(row) if row else None
 
@@ -353,9 +358,9 @@ class Database:
         task_id: str,
         text: Optional[str] = None,
         priority: Optional[str] = None,
-        category: Optional[str] = None,
-        due_date: object = _SENTINEL,
-        comment: object = _SENTINEL,
+        category: object = SENTINEL,
+        due_date: object = SENTINEL,
+        comment: object = SENTINEL,
     ) -> None:
         """Update text, priority, category, due_date, and/or comment fields on a task."""
         fields: list[str] = []
@@ -366,13 +371,13 @@ class Database:
         if priority is not None:
             fields.append("priority = ?")
             values.append(priority)
-        if category is not None:
+        if category is not SENTINEL:
             fields.append("category = ?")
             values.append(category)
-        if due_date is not _SENTINEL:
+        if due_date is not SENTINEL:
             fields.append("due_date = ?")
             values.append(due_date)
-        if comment is not _SENTINEL:
+        if comment is not SENTINEL:
             fields.append("comment = ?")
             values.append(comment)
         if not fields:
@@ -397,93 +402,83 @@ class Database:
         Returns list of dicts with keys: type, id, match_text, subject_id.
         Case-insensitive LIKE match. Excludes soft-deleted records. Max 20 results.
         """
-        like = f"%{query}%"
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped}%"
         sql = """
             SELECT 'subject' AS type, id, name AS match_text, id AS subject_id
             FROM subjects
-            WHERE name LIKE ? AND deleted_at IS NULL
+            WHERE name LIKE ? ESCAPE '\\' AND deleted_at IS NULL
             UNION ALL
             SELECT 'task' AS type, id, text AS match_text, subject_id
             FROM tasks
-            WHERE text LIKE ? AND deleted_at IS NULL
+            WHERE text LIKE ? ESCAPE '\\' AND deleted_at IS NULL
             UNION ALL
             SELECT 'note' AS type, id, content AS match_text, subject_id
             FROM notes
-            WHERE content LIKE ? AND deleted_at IS NULL
+            WHERE content LIKE ? ESCAPE '\\' AND deleted_at IS NULL
             UNION ALL
             SELECT 'open_point' AS type, id, text AS match_text, subject_id
             FROM open_points
-            WHERE text LIKE ? AND deleted_at IS NULL
+            WHERE text LIKE ? ESCAPE '\\' AND deleted_at IS NULL
             UNION ALL
             SELECT 'follow_up' AS type, id, text AS match_text, subject_id
             FROM follow_ups
-            WHERE (text LIKE ? OR owner LIKE ?) AND deleted_at IS NULL
+            WHERE (text LIKE ? ESCAPE '\\' OR owner LIKE ? ESCAPE '\\') AND deleted_at IS NULL
             UNION ALL
             SELECT 'milestone' AS type, id, name AS match_text, subject_id
             FROM milestones
-            WHERE name LIKE ? AND deleted_at IS NULL
+            WHERE name LIKE ? ESCAPE '\\' AND deleted_at IS NULL
             LIMIT 20
         """
         rows = self.conn.execute(sql, (like, like, like, like, like, like, like)).fetchall()
         return [dict(row) for row in rows]
 
     def list_week_tasks(self) -> List[Task]:
-        """Return week-relevant non-done tasks across all subjects.
-
-        A task is "this week" if it has a day assignment (mon/tue/...) OR its
-        due_date falls within the current week (Monday–Sunday).
-        Excludes soft-deleted tasks and tasks belonging to soft-deleted subjects.
-        Includes subject_name from join.
-        """
+        """Return week-relevant non-done tasks across all subjects."""
+        today = date.today()
+        monday = (today - timedelta(days=today.weekday())).isoformat()
+        sunday = (today - timedelta(days=today.weekday()) + timedelta(days=6)).isoformat()
         sql = """
             SELECT t.*, s.name AS subject_name
             FROM tasks t JOIN subjects s ON t.subject_id = s.id
             WHERE (t.day IS NOT NULL
-                   OR (t.due_date >= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days')
-                       AND t.due_date <= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days', '+6 days')))
+                   OR (t.due_date >= ? AND t.due_date <= ?))
             AND t.status != 'done'
-            AND t.deleted_at IS NULL AND s.deleted_at IS NULL
+            AND t.deleted_at IS NULL AND s.deleted_at IS NULL AND s.archived = 0
             ORDER BY COALESCE(t.due_date, '9999-12-31'),
                      CASE t.day WHEN 'mon' THEN 1 WHEN 'tue' THEN 2 WHEN 'wed' THEN 3
                                  WHEN 'thu' THEN 4 WHEN 'fri' THEN 5 ELSE 6 END,
                      CASE t.priority WHEN 'must' THEN 1 WHEN 'should' THEN 2 ELSE 3 END
         """
-        rows = self.conn.execute(sql).fetchall()
+        rows = self.conn.execute(sql, (monday, sunday)).fetchall()
         return [Task.from_row(row) for row in rows]
 
     def list_today_tasks(self) -> List[Task]:
-        """Return today-relevant non-done tasks across all subjects, ordered by priority.
-
-        A task is "today" if it's manually flagged (today=1) OR its due_date is
-        today or earlier (overdue).
-        Excludes soft-deleted tasks and tasks belonging to soft-deleted subjects.
-        Includes subject_name from join.
-        """
+        """Return today-relevant non-done tasks across all subjects, ordered by priority."""
+        today_str = date.today().isoformat()
         sql = """
             SELECT t.*, s.name AS subject_name
             FROM tasks t JOIN subjects s ON t.subject_id = s.id
-            WHERE (t.today = 1 OR t.due_date <= date('now'))
+            WHERE (t.today = 1 OR t.due_date <= ?)
             AND t.status != 'done'
-            AND t.deleted_at IS NULL AND s.deleted_at IS NULL
+            AND t.deleted_at IS NULL AND s.deleted_at IS NULL AND s.archived = 0
             ORDER BY CASE t.priority WHEN 'must' THEN 1 WHEN 'should' THEN 2 ELSE 3 END
         """
-        rows = self.conn.execute(sql).fetchall()
+        rows = self.conn.execute(sql, (today_str,)).fetchall()
         return [Task.from_row(row) for row in rows]
 
     def today_counts(self) -> tuple[int, int, int]:
-        """Return (total, done, blocked) counts for today-relevant tasks.
-
-        A task is "today" if manually flagged or due today/overdue.
-        Includes done tasks in the total (for summary display).
-        Excludes soft-deleted tasks.
-        """
+        """Return (total, done, blocked) counts for today-relevant tasks."""
+        today_str = date.today().isoformat()
         sql = """
             SELECT COUNT(*) AS total,
-              SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS done,
-              SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) AS blocked
-            FROM tasks WHERE (today = 1 OR due_date <= date('now')) AND deleted_at IS NULL
+              SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END) AS done,
+              SUM(CASE WHEN t.status = 'blocked' THEN 1 ELSE 0 END) AS blocked
+            FROM tasks t JOIN subjects s ON t.subject_id = s.id
+            WHERE (t.today = 1 OR t.due_date <= ?)
+            AND t.deleted_at IS NULL AND s.deleted_at IS NULL AND s.archived = 0
         """
-        row = self.conn.execute(sql).fetchone()
+        row = self.conn.execute(sql, (today_str,)).fetchone()
         total = row["total"] or 0
         done = row["done"] or 0
         blocked = row["blocked"] or 0
@@ -495,29 +490,32 @@ class Database:
 
     def list_today_follow_ups(self) -> List["FollowUp"]:
         """Return follow-ups due today or overdue, with waiting/overdue status."""
+        today_str = date.today().isoformat()
         sql = """
             SELECT f.*, s.name AS subject_name
             FROM follow_ups f JOIN subjects s ON f.subject_id = s.id
-            WHERE f.due_by <= date('now')
+            WHERE f.due_by <= ?
             AND f.status IN ('waiting', 'overdue')
-            AND f.deleted_at IS NULL AND s.deleted_at IS NULL
+            AND f.deleted_at IS NULL AND s.deleted_at IS NULL AND s.archived = 0
             ORDER BY f.due_by ASC
         """
-        rows = self.conn.execute(sql).fetchall()
+        rows = self.conn.execute(sql, (today_str,)).fetchall()
         return [FollowUp.from_row(row) for row in rows]
 
     def list_week_follow_ups(self) -> List["FollowUp"]:
         """Return follow-ups due this week (Mon-Sun), with waiting/overdue status."""
+        today = date.today()
+        monday = (today - timedelta(days=today.weekday())).isoformat()
+        sunday = (today - timedelta(days=today.weekday()) + timedelta(days=6)).isoformat()
         sql = """
             SELECT f.*, s.name AS subject_name
             FROM follow_ups f JOIN subjects s ON f.subject_id = s.id
-            WHERE f.due_by >= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days')
-            AND f.due_by <= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days', '+6 days')
+            WHERE f.due_by >= ? AND f.due_by <= ?
             AND f.status IN ('waiting', 'overdue')
-            AND f.deleted_at IS NULL AND s.deleted_at IS NULL
+            AND f.deleted_at IS NULL AND s.deleted_at IS NULL AND s.archived = 0
             ORDER BY f.due_by ASC
         """
-        rows = self.conn.execute(sql).fetchall()
+        rows = self.conn.execute(sql, (monday, sunday)).fetchall()
         return [FollowUp.from_row(row) for row in rows]
 
     # ------------------------------------------------------------------
@@ -600,23 +598,23 @@ class Database:
     def update_milestone(
         self,
         milestone_id: str,
-        name: str = _SENTINEL,
-        target_date: str = _SENTINEL,
-        lead_weeks: int = _SENTINEL,
-        comment: str = _SENTINEL,
+        name: str = SENTINEL,
+        target_date: str = SENTINEL,
+        lead_weeks: int = SENTINEL,
+        comment: str = SENTINEL,
     ) -> None:
         updates = []
         params = []
-        if name is not _SENTINEL:
+        if name is not SENTINEL:
             updates.append("name = ?")
             params.append(name)
-        if target_date is not _SENTINEL:
+        if target_date is not SENTINEL:
             updates.append("target_date = ?")
             params.append(target_date)
-        if lead_weeks is not _SENTINEL:
+        if lead_weeks is not SENTINEL:
             updates.append("lead_weeks = ?")
             params.append(lead_weeks)
-        if comment is not _SENTINEL:
+        if comment is not SENTINEL:
             updates.append("comment = ?")
             params.append(comment)
         if updates:
@@ -636,17 +634,16 @@ class Database:
 
     def soft_delete_milestone(self, milestone_id: str) -> None:
         now = self._now()
-        self.conn.execute(
-            "UPDATE milestones SET deleted_at = ? WHERE id = ?", (now, milestone_id)
-        )
-        # Unlink tasks and follow-ups
-        self.conn.execute(
-            "UPDATE tasks SET milestone_id = NULL WHERE milestone_id = ?", (milestone_id,)
-        )
-        self.conn.execute(
-            "UPDATE follow_ups SET milestone_id = NULL WHERE milestone_id = ?", (milestone_id,)
-        )
-        self.conn.commit()
+        with self.conn:
+            self.conn.execute(
+                "UPDATE milestones SET deleted_at = ? WHERE id = ?", (now, milestone_id)
+            )
+            self.conn.execute(
+                "UPDATE tasks SET milestone_id = NULL WHERE milestone_id = ?", (milestone_id,)
+            )
+            self.conn.execute(
+                "UPDATE follow_ups SET milestone_id = NULL WHERE milestone_id = ?", (milestone_id,)
+            )
 
     def link_task_to_milestone(self, task_id: str, milestone_id: Optional[str]) -> None:
         self.conn.execute(
@@ -685,7 +682,7 @@ class Database:
             """SELECT m.*, s.name AS subject_name
                FROM milestones m JOIN subjects s ON m.subject_id = s.id
                WHERE m.status = 'active' AND m.target_date IS NOT NULL
-               AND m.deleted_at IS NULL AND s.deleted_at IS NULL
+               AND m.deleted_at IS NULL AND s.deleted_at IS NULL AND s.archived = 0
                ORDER BY m.target_date ASC""",
         ).fetchall()
         return [Milestone.from_row(row) for row in rows]
@@ -768,6 +765,22 @@ class Database:
         )
         self.conn.commit()
 
+    def update_open_point(
+        self, point_id: str, text: str, context: Optional[str] = None,
+        comment: Optional[str] = None, resolved_note: object = SENTINEL,
+    ) -> None:
+        """Update all fields on an open point in a single transaction."""
+        with self.conn:
+            self.conn.execute(
+                "UPDATE open_points SET text = ?, context = ?, comment = ? WHERE id = ?",
+                (text, context, comment, point_id),
+            )
+            if resolved_note is not SENTINEL:
+                self.conn.execute(
+                    "UPDATE open_points SET resolved_note = ? WHERE id = ?",
+                    (resolved_note, point_id),
+                )
+
     def soft_delete_open_point(self, point_id: str) -> None:
         self.conn.execute(
             "UPDATE open_points SET deleted_at = ? WHERE id = ?",
@@ -845,12 +858,19 @@ class Database:
         text: str,
         owner: str,
         due_by: Optional[str],
+        asked_on: Optional[str] = None,
     ) -> None:
-        """Update text, owner, and due_by fields on a follow-up."""
-        self.conn.execute(
-            "UPDATE follow_ups SET text = ?, owner = ?, due_by = ? WHERE id = ?",
-            (text, owner, due_by, follow_up_id),
-        )
+        """Update text, owner, due_by, and optionally asked_on fields on a follow-up."""
+        if asked_on:
+            self.conn.execute(
+                "UPDATE follow_ups SET text = ?, owner = ?, due_by = ?, asked_on = ? WHERE id = ?",
+                (text, owner, due_by, asked_on, follow_up_id),
+            )
+        else:
+            self.conn.execute(
+                "UPDATE follow_ups SET text = ?, owner = ?, due_by = ? WHERE id = ?",
+                (text, owner, due_by, follow_up_id),
+            )
         self.conn.commit()
 
     def soft_delete_follow_up(self, follow_up_id: str) -> None:
@@ -887,6 +907,15 @@ class Database:
         stored_week = row["value"] if row else None
 
         if not force and stored_week == current_monday_str:
+            return False
+
+        # First launch: just set week_of without wiping assignments
+        if stored_week is None and not force:
+            self.conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES ('week_of', ?)",
+                (current_monday_str,),
+            )
+            self.conn.commit()
             return False
 
         cutoff = (today - timedelta(days=14)).isoformat()

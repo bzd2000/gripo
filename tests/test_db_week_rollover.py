@@ -155,10 +155,16 @@ def test_rollover_runs_if_different_week(db: Database) -> None:
     assert result is True
 
 
-def test_rollover_runs_if_no_week_of_in_meta(db: Database) -> None:
-    # Fresh DB has no meta entry
+def test_rollover_first_launch_sets_week_of_without_wiping(db: Database) -> None:
+    # Fresh DB has no meta entry — should just set week_of, not wipe assignments
+    sid = _subject(db)
+    tid = db.add_task(subject_id=sid, text="Keep me", today=True, day="mon")
     result = db.perform_week_rollover(force=False)
-    assert result is True
+    assert result is False  # no rollover on first launch
+    assert _get_week_of(db) is not None  # but week_of is set
+    task = db.get_task(tid)
+    assert task.today is True  # today flag preserved
+    assert task.day == "mon"  # day preserved
 
 
 def test_rollover_with_force_runs_even_same_week(db: Database) -> None:
