@@ -7,7 +7,7 @@ from typing import Optional
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
-from textual.widgets import Input, Label, Select, TextArea
+from textual.widgets import Input, Label, Select
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
@@ -44,7 +44,6 @@ class FollowUpForm(Container):
 
         initial_text = fu.text if fu else ""
         initial_owner = fu.owner if fu else ""
-        initial_notes = fu.notes or "" if fu else ""
         initial_comment = fu.comment or "" if fu else ""
 
         if fu:
@@ -64,8 +63,6 @@ class FollowUpForm(Container):
             yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
             yield Label("Asked on", classes="field-label")
             yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
-            yield Label("Notes", classes="field-label")
-            yield TextArea(text=initial_notes, id="fu-notes-area")
             # Milestone link
             milestones = self._db.list_milestones(self._subject_id)
             active_ms = [(m.name, m.id) for m in milestones if m.status == "active"]
@@ -101,7 +98,6 @@ class FollowUpForm(Container):
 
         due_by = self.query_one("#fu-due-by-input", DateInput).date_value
         asked_on = self.query_one("#fu-asked-on-input", DateInput).date_value
-        notes = self.query_one("#fu-notes-area", TextArea).text.strip() or None
         comment = self.query_one("#fu-comment-editor", CommentEditor).text.strip() or None
 
         # Milestone link (optional)
@@ -114,7 +110,6 @@ class FollowUpForm(Container):
 
         if self._follow_up_id:
             self._db.update_follow_up(self._follow_up_id, text=text, owner=owner, due_by=due_by, asked_on=asked_on)
-            self._db.update_follow_up_notes(self._follow_up_id, notes)
             self._db.update_follow_up_comment(self._follow_up_id, comment)
             self._db.link_follow_up_to_milestone(self._follow_up_id, milestone_id)
             saved_id = self._follow_up_id
@@ -122,8 +117,6 @@ class FollowUpForm(Container):
             saved_id = self._db.add_follow_up(
                 subject_id=self._subject_id, text=text, owner=owner, due_by=due_by, comment=comment,
             )
-            if notes:
-                self._db.update_follow_up_notes(saved_id, notes)
             if milestone_id:
                 self._db.link_follow_up_to_milestone(saved_id, milestone_id)
 
