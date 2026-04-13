@@ -1,4 +1,4 @@
-"""NoteEditor widget — markdown rendered content with edit toggle. First line = title."""
+"""NoteEditor widget — title input + markdown rendered content."""
 
 from __future__ import annotations
 
@@ -6,16 +6,16 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
-from textual.widgets import Label
+from textual.containers import Vertical
+from textual.widgets import Input, Label
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
 from tracker.widgets.comment_editor import CommentEditor
 
 
-class NoteEditor(Container):
-    """Note editor using CommentEditor. First line of content is the title."""
+class NoteEditor(Vertical):
+    """Note editor: title on top, markdown content below."""
 
     BINDINGS = [
         Binding("ctrl+s", "save", "Save"),
@@ -35,26 +35,24 @@ class NoteEditor(Container):
         self._note = db.get_note(note_id) if note_id else None
 
     def compose(self) -> ComposeResult:
-        heading = "Edit Note" if self._note else "New Note"
+        initial_title = self._note.title if self._note else ""
         initial_content = self._note.content if self._note else ""
 
-        yield Label(heading, classes="overview-col-header")
+        yield Input(value=initial_title, placeholder="Title", id="note-title-input")
         yield CommentEditor(text=initial_content, id="note-content-editor")
 
     def on_mount(self) -> None:
-        # Start in edit mode for new notes
-        if not self._note:
-            editor = self.query_one("#note-content-editor", CommentEditor)
-            editor._enter_edit()
+        if self._note:
+            self.query_one("#note-content-editor", CommentEditor).focus()
+        else:
+            self.query_one("#note-title-input", Input).focus()
 
     def action_save(self) -> None:
+        title = self.query_one("#note-title-input", Input).value.strip()
         content = self.query_one("#note-content-editor", CommentEditor).text.strip()
         if not content:
             self.notify("Note content cannot be empty.", severity="error")
             return
-
-        # First line is the title
-        title = content.split("\n", 1)[0].strip().lstrip("#").strip()
 
         if self._note_id:
             self._db.update_note(self._note_id, content, title=title)
