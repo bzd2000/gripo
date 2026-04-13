@@ -22,11 +22,13 @@ def _strip_markdown(text: str) -> str:
 
 
 def _note_label(note: Note) -> str:
-    date = note.created_at[:10]
+    date_str = note.created_at[:10]
+    if note.title:
+        return f"{date_str}  {note.title}"
     preview = _strip_markdown(note.content)
     if len(preview) > 80:
         preview = preview[:77] + "..."
-    return f"{date}  {preview}"
+    return f"{date_str}  {preview}"
 
 
 class NotesList(ListView):

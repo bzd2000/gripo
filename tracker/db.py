@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
 CREATE TABLE IF NOT EXISTS notes (
     id            TEXT PRIMARY KEY,
     subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT,
+    title         TEXT NOT NULL DEFAULT '',
     content       TEXT NOT NULL,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
@@ -158,6 +159,11 @@ class Database:
         subj_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(subjects)").fetchall()]
         if "subject_type" not in subj_cols:
             self.conn.execute("ALTER TABLE subjects ADD COLUMN subject_type TEXT CHECK (subject_type IN ('person', 'team', 'board', 'project'))")
+
+        # Add title to notes if missing
+        note_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(notes)").fetchall()]
+        if note_cols and "title" not in note_cols:
+            self.conn.execute("ALTER TABLE notes ADD COLUMN title TEXT NOT NULL DEFAULT ''")
 
     # ------------------------------------------------------------------
     # Subject CRUD
@@ -522,11 +528,11 @@ class Database:
     # Note CRUD
     # ------------------------------------------------------------------
 
-    def add_note(self, subject_id: str, content: str) -> str:
+    def add_note(self, subject_id: str, content: str, title: str = "") -> str:
         note_id = _new_id()
         self.conn.execute(
-            "INSERT INTO notes (id, subject_id, content) VALUES (?, ?, ?)",
-            (note_id, subject_id, content),
+            "INSERT INTO notes (id, subject_id, title, content) VALUES (?, ?, ?, ?)",
+            (note_id, subject_id, title, content),
         )
         self.conn.commit()
         return note_id
@@ -545,11 +551,11 @@ class Database:
         ).fetchall()
         return [Note.from_row(row) for row in rows]
 
-    def update_note(self, note_id: str, content: str) -> None:
-        """Update note content and set updated_at to now."""
+    def update_note(self, note_id: str, content: str, title: str = "") -> None:
+        """Update note title, content and set updated_at to now."""
         self.conn.execute(
-            "UPDATE notes SET content = ?, updated_at = ? WHERE id = ?",
-            (content, self._now(), note_id),
+            "UPDATE notes SET title = ?, content = ?, updated_at = ? WHERE id = ?",
+            (title, content, self._now(), note_id),
         )
         self.conn.commit()
 

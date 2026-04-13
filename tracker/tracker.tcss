@@ -411,10 +411,7 @@ TextArea:focus {
 
 /* ── NoteEditor ───────────────────────────────────────────────────── */
 
-NoteEditor TextArea {
-    width: 100%;
-    height: 1fr;
-}
+/* NoteEditor uses item-form layout (title fields | content editor) */
 
 /* ── Section headers ──────────────────────────────────────────────── */
 

@@ -243,9 +243,9 @@ class NavTree(Tree):
         )
         for note in notes:
             date_str = note.created_at[:10]
-            preview = _truncate(note.content.replace("\n", " "), 40)
+            label = note.title if note.title else _truncate(note.content.replace("\n", " "), 40)
             notes_section.add_leaf(
-                f"{date_str} {preview}",
+                f"{date_str} {label}",
                 data={
                     "type": "note",
                     "id": note.id,

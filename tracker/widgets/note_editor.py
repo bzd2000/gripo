@@ -1,4 +1,4 @@
-"""NoteEditor widget — inline editor for adding or editing a note."""
+"""NoteEditor widget — markdown rendered content with edit toggle. First line = title."""
 
 from __future__ import annotations
 
@@ -7,14 +7,15 @@ from typing import Optional
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
-from textual.widgets import Label, TextArea
+from textual.widgets import Label
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
+from tracker.widgets.comment_editor import CommentEditor
 
 
 class NoteEditor(Container):
-    """Full-pane markdown editor for notes."""
+    """Note editor using CommentEditor. First line of content is the title."""
 
     BINDINGS = [
         Binding("ctrl+s", "save", "Save"),
@@ -34,30 +35,32 @@ class NoteEditor(Container):
         self._note = db.get_note(note_id) if note_id else None
 
     def compose(self) -> ComposeResult:
-        title = "Edit Note" if self._note else "New Note"
+        heading = "Edit Note" if self._note else "New Note"
         initial_content = self._note.content if self._note else ""
 
-        yield Label(title, classes="form-title")
-        yield TextArea(
-            text=initial_content,
-            language="markdown",
-            id="note-content-area",
-        )
+        yield Label(heading, classes="overview-col-header")
+        yield CommentEditor(text=initial_content, id="note-content-editor")
 
     def on_mount(self) -> None:
-        self.query_one("#note-content-area", TextArea).focus()
+        # Start in edit mode for new notes
+        if not self._note:
+            editor = self.query_one("#note-content-editor", CommentEditor)
+            editor._enter_edit()
 
     def action_save(self) -> None:
-        content = self.query_one("#note-content-area", TextArea).text.strip()
+        content = self.query_one("#note-content-editor", CommentEditor).text.strip()
         if not content:
             self.notify("Note content cannot be empty.", severity="error")
             return
 
+        # First line is the title
+        title = content.split("\n", 1)[0].strip().lstrip("#").strip()
+
         if self._note_id:
-            self._db.update_note(self._note_id, content)
+            self._db.update_note(self._note_id, content, title=title)
             saved_id = self._note_id
         else:
-            saved_id = self._db.add_note(subject_id=self._subject_id, content=content)
+            saved_id = self._db.add_note(subject_id=self._subject_id, content=content, title=title)
 
         self.post_message(DataChanged())
         self.post_message(ContentSaved("note_editor", {"subject_id": self._subject_id, "note_id": saved_id}))

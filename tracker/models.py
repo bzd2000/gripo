@@ -191,6 +191,7 @@ class Milestone:
 class Note:
     id: str
     subject_id: str
+    title: str
     content: str
     created_at: str
     updated_at: str
@@ -198,9 +199,11 @@ class Note:
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Note":
+        keys = row.keys()
         return cls(
             id=row["id"],
             subject_id=row["subject_id"],
+            title=row["title"] if "title" in keys else "",
             content=row["content"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
