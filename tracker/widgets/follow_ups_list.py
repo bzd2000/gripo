@@ -5,7 +5,7 @@ from __future__ import annotations
 from textual.widgets import Label, ListItem, ListView
 
 from tracker.db import Database
-from tracker.messages import DataChanged, ShowContent
+from tracker.messages import ContentCancelled, DataChanged, ShowContent
 from tracker.models import FollowUp
 from tracker.screens.confirm import ConfirmScreen
 
@@ -43,6 +43,7 @@ class FollowUpsList(ListView):
         ("s", "cycle_status", "Cycle status"),
         ("n", "edit_notes", "Edit notes"),
         ("x", "delete_follow_up", "Delete"),
+        ("escape", "back", "Back"),
     ]
 
     def __init__(self, db: Database, subject_id: str) -> None:
@@ -89,6 +90,11 @@ class FollowUpsList(ListView):
     # Actions
     # ------------------------------------------------------------------
 
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        fu_id = getattr(event.item, "_follow_up_id", None)
+        if fu_id:
+            self.post_message(ShowContent(content_type="follow_up_form", data={"subject_id": self._subject_id, "follow_up_id": fu_id}))
+
     def action_add_follow_up(self) -> None:
         self.post_message(ShowContent(content_type="follow_up_form", data={"subject_id": self._subject_id}))
 
@@ -127,3 +133,6 @@ class FollowUpsList(ListView):
                 self.notify("Follow-up deleted")
 
         self.app.push_screen(ConfirmScreen("Delete this follow-up?"), _on_confirm)
+
+    def action_back(self) -> None:
+        self.post_message(ContentCancelled())

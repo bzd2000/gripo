@@ -5,7 +5,7 @@ from __future__ import annotations
 from textual.widgets import Label, ListItem, ListView
 
 from tracker.db import Database
-from tracker.messages import DataChanged, ShowContent
+from tracker.messages import ContentCancelled, DataChanged, ShowContent
 from tracker.models import OpenPoint
 from tracker.screens.confirm import ConfirmScreen
 
@@ -43,6 +43,7 @@ class OpenPointsList(ListView):
         ("r", "resolve_point", "Resolve"),
         ("s", "cycle_status", "Cycle status"),
         ("x", "delete_point", "Delete"),
+        ("escape", "back", "Back"),
     ]
 
     def __init__(self, db: Database, subject_id: str) -> None:
@@ -92,6 +93,11 @@ class OpenPointsList(ListView):
     # Actions
     # ------------------------------------------------------------------
 
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        point_id = getattr(event.item, "_point_id", None)
+        if point_id:
+            self.post_message(ShowContent(content_type="open_point_form", data={"subject_id": self._subject_id, "point_id": point_id}))
+
     def action_add_point(self) -> None:
         self.post_message(ShowContent(content_type="open_point_form", data={"subject_id": self._subject_id}))
 
@@ -136,3 +142,6 @@ class OpenPointsList(ListView):
                 self.notify("Open point deleted")
 
         self.app.push_screen(ConfirmScreen("Delete this open point?"), _on_confirm)
+
+    def action_back(self) -> None:
+        self.post_message(ContentCancelled())

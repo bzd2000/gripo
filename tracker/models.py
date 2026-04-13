@@ -57,8 +57,9 @@ class Task:
     completed_at: Optional[str]
     deleted_at: Optional[str]
 
-    # Optional field for cross-cutting queries
+    # Optional fields for cross-cutting queries / linking
     subject_name: Optional[str] = None
+    milestone_id: Optional[str] = None
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Task":
@@ -78,6 +79,7 @@ class Task:
             completed_at=row["completed_at"],
             deleted_at=row["deleted_at"],
             subject_name=row["subject_name"] if "subject_name" in keys else None,
+            milestone_id=row["milestone_id"] if "milestone_id" in keys else None,
         )
 
 
@@ -124,6 +126,10 @@ class FollowUp:
     comment: Optional[str]
     deleted_at: Optional[str]
 
+    # Optional fields for cross-cutting queries / linking
+    subject_name: Optional[str] = None
+    milestone_id: Optional[str] = None
+
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "FollowUp":
         keys = row.keys()
@@ -138,6 +144,42 @@ class FollowUp:
             notes=row["notes"],
             comment=row["comment"] if "comment" in keys else None,
             deleted_at=row["deleted_at"],
+            subject_name=row["subject_name"] if "subject_name" in keys else None,
+            milestone_id=row["milestone_id"] if "milestone_id" in keys else None,
+        )
+
+
+@dataclass
+class Milestone:
+    id: str
+    subject_id: str
+    name: str
+    target_date: Optional[str]
+    lead_weeks: Optional[int]
+    status: str
+    comment: Optional[str]
+    created_at: str
+    completed_at: Optional[str]
+    deleted_at: Optional[str]
+
+    # Optional field for cross-cutting queries
+    subject_name: Optional[str] = None
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Milestone":
+        keys = row.keys()
+        return cls(
+            id=row["id"],
+            subject_id=row["subject_id"],
+            name=row["name"],
+            target_date=row["target_date"] if "target_date" in keys else None,
+            lead_weeks=row["lead_weeks"] if "lead_weeks" in keys else None,
+            status=row["status"],
+            comment=row["comment"] if "comment" in keys else None,
+            created_at=row["created_at"],
+            completed_at=row["completed_at"] if "completed_at" in keys else None,
+            deleted_at=row["deleted_at"],
+            subject_name=row["subject_name"] if "subject_name" in keys else None,
         )
 
 

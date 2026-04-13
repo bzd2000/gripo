@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Union
 
-from tracker.models import FollowUp, Note, OpenPoint, Subject, Task
+from tracker.models import FollowUp, Milestone, Note, OpenPoint, Subject, Task
 
 _SENTINEL = object()
 
@@ -77,6 +77,19 @@ CREATE TABLE IF NOT EXISTS notes (
     deleted_at    TEXT
 );
 
+CREATE TABLE IF NOT EXISTS milestones (
+    id            TEXT PRIMARY KEY,
+    subject_id    TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL,
+    target_date   TEXT,
+    lead_weeks    INTEGER,
+    status        TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+    comment       TEXT,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    completed_at  TEXT,
+    deleted_at    TEXT
+);
+
 CREATE TABLE IF NOT EXISTS meta (
     key           TEXT PRIMARY KEY,
     value         TEXT NOT NULL
@@ -124,6 +137,17 @@ class Database:
         fu_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(follow_ups)").fetchall()]
         if "comment" not in fu_cols:
             self.conn.execute("ALTER TABLE follow_ups ADD COLUMN comment TEXT")
+
+        # Add milestone_id to tasks and follow_ups if missing
+        if "milestone_id" not in cols:
+            self.conn.execute("ALTER TABLE tasks ADD COLUMN milestone_id TEXT REFERENCES milestones(id) ON DELETE SET NULL")
+        if "milestone_id" not in fu_cols:
+            self.conn.execute("ALTER TABLE follow_ups ADD COLUMN milestone_id TEXT REFERENCES milestones(id) ON DELETE SET NULL")
+
+        # Add lead_weeks to milestones if missing
+        ms_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(milestones)").fetchall()]
+        if ms_cols and "lead_weeks" not in ms_cols:
+            self.conn.execute("ALTER TABLE milestones ADD COLUMN lead_weeks INTEGER")
 
     # ------------------------------------------------------------------
     # Subject CRUD
@@ -188,6 +212,12 @@ class Database:
         rows = self.conn.execute(sql).fetchall()
         return [Subject.from_row(row) for row in rows]
 
+    def rename_subject(self, subject_id: str, name: str) -> None:
+        self.conn.execute(
+            "UPDATE subjects SET name = ? WHERE id = ?", (name, subject_id)
+        )
+        self.conn.commit()
+
     def toggle_pin(self, subject_id: str) -> None:
         self.conn.execute(
             "UPDATE subjects SET pinned = CASE WHEN pinned = 1 THEN 0 ELSE 1 END WHERE id = ?",
@@ -208,7 +238,7 @@ class Database:
             self.conn.execute(
                 "UPDATE subjects SET deleted_at = ? WHERE id = ?", (now, subject_id)
             )
-            for table in ("tasks", "open_points", "follow_ups", "notes"):
+            for table in ("tasks", "open_points", "follow_ups", "notes", "milestones"):
                 self.conn.execute(
                     f"UPDATE {table} SET deleted_at = ? WHERE subject_id = ? AND deleted_at IS NULL",
                     (now, subject_id),
@@ -377,23 +407,33 @@ class Database:
             SELECT 'follow_up' AS type, id, text AS match_text, subject_id
             FROM follow_ups
             WHERE (text LIKE ? OR owner LIKE ?) AND deleted_at IS NULL
+            UNION ALL
+            SELECT 'milestone' AS type, id, name AS match_text, subject_id
+            FROM milestones
+            WHERE name LIKE ? AND deleted_at IS NULL
             LIMIT 20
         """
-        rows = self.conn.execute(sql, (like, like, like, like, like, like)).fetchall()
+        rows = self.conn.execute(sql, (like, like, like, like, like, like, like)).fetchall()
         return [dict(row) for row in rows]
 
     def list_week_tasks(self) -> List[Task]:
-        """Return week-assigned non-done tasks across all subjects, ordered by day then priority.
+        """Return week-relevant non-done tasks across all subjects.
 
+        A task is "this week" if it has a day assignment (mon/tue/...) OR its
+        due_date falls within the current week (Monday–Sunday).
         Excludes soft-deleted tasks and tasks belonging to soft-deleted subjects.
         Includes subject_name from join.
         """
         sql = """
             SELECT t.*, s.name AS subject_name
             FROM tasks t JOIN subjects s ON t.subject_id = s.id
-            WHERE t.day IS NOT NULL AND t.status != 'done'
+            WHERE (t.day IS NOT NULL
+                   OR (t.due_date >= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days')
+                       AND t.due_date <= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days', '+6 days')))
+            AND t.status != 'done'
             AND t.deleted_at IS NULL AND s.deleted_at IS NULL
-            ORDER BY CASE t.day WHEN 'mon' THEN 1 WHEN 'tue' THEN 2 WHEN 'wed' THEN 3
+            ORDER BY COALESCE(t.due_date, '9999-12-31'),
+                     CASE t.day WHEN 'mon' THEN 1 WHEN 'tue' THEN 2 WHEN 'wed' THEN 3
                                  WHEN 'thu' THEN 4 WHEN 'fri' THEN 5 ELSE 6 END,
                      CASE t.priority WHEN 'must' THEN 1 WHEN 'should' THEN 2 ELSE 3 END
         """
@@ -401,15 +441,18 @@ class Database:
         return [Task.from_row(row) for row in rows]
 
     def list_today_tasks(self) -> List[Task]:
-        """Return today-flagged non-done tasks across all subjects, ordered by priority.
+        """Return today-relevant non-done tasks across all subjects, ordered by priority.
 
+        A task is "today" if it's manually flagged (today=1) OR its due_date is
+        today or earlier (overdue).
         Excludes soft-deleted tasks and tasks belonging to soft-deleted subjects.
         Includes subject_name from join.
         """
         sql = """
             SELECT t.*, s.name AS subject_name
             FROM tasks t JOIN subjects s ON t.subject_id = s.id
-            WHERE t.today = 1 AND t.status != 'done'
+            WHERE (t.today = 1 OR t.due_date <= date('now'))
+            AND t.status != 'done'
             AND t.deleted_at IS NULL AND s.deleted_at IS NULL
             ORDER BY CASE t.priority WHEN 'must' THEN 1 WHEN 'should' THEN 2 ELSE 3 END
         """
@@ -417,8 +460,9 @@ class Database:
         return [Task.from_row(row) for row in rows]
 
     def today_counts(self) -> tuple[int, int, int]:
-        """Return (total, done, blocked) counts for today-flagged tasks.
+        """Return (total, done, blocked) counts for today-relevant tasks.
 
+        A task is "today" if manually flagged or due today/overdue.
         Includes done tasks in the total (for summary display).
         Excludes soft-deleted tasks.
         """
@@ -426,13 +470,44 @@ class Database:
             SELECT COUNT(*) AS total,
               SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS done,
               SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) AS blocked
-            FROM tasks WHERE today = 1 AND deleted_at IS NULL
+            FROM tasks WHERE (today = 1 OR due_date <= date('now')) AND deleted_at IS NULL
         """
         row = self.conn.execute(sql).fetchone()
         total = row["total"] or 0
         done = row["done"] or 0
         blocked = row["blocked"] or 0
         return (total, done, blocked)
+
+    # ------------------------------------------------------------------
+    # Today / Week follow-up queries
+    # ------------------------------------------------------------------
+
+    def list_today_follow_ups(self) -> List["FollowUp"]:
+        """Return follow-ups due today or overdue, with waiting/overdue status."""
+        sql = """
+            SELECT f.*, s.name AS subject_name
+            FROM follow_ups f JOIN subjects s ON f.subject_id = s.id
+            WHERE f.due_by <= date('now')
+            AND f.status IN ('waiting', 'overdue')
+            AND f.deleted_at IS NULL AND s.deleted_at IS NULL
+            ORDER BY f.due_by ASC
+        """
+        rows = self.conn.execute(sql).fetchall()
+        return [FollowUp.from_row(row) for row in rows]
+
+    def list_week_follow_ups(self) -> List["FollowUp"]:
+        """Return follow-ups due this week (Mon-Sun), with waiting/overdue status."""
+        sql = """
+            SELECT f.*, s.name AS subject_name
+            FROM follow_ups f JOIN subjects s ON f.subject_id = s.id
+            WHERE f.due_by >= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days')
+            AND f.due_by <= date('now', '-' || ((strftime('%w','now') + 6) % 7) || ' days', '+6 days')
+            AND f.status IN ('waiting', 'overdue')
+            AND f.deleted_at IS NULL AND s.deleted_at IS NULL
+            ORDER BY f.due_by ASC
+        """
+        rows = self.conn.execute(sql).fetchall()
+        return [FollowUp.from_row(row) for row in rows]
 
     # ------------------------------------------------------------------
     # Note CRUD
@@ -475,6 +550,134 @@ class Database:
             (self._now(), note_id),
         )
         self.conn.commit()
+
+    # ------------------------------------------------------------------
+    # Milestone CRUD
+    # ------------------------------------------------------------------
+
+    def add_milestone(
+        self,
+        subject_id: str,
+        name: str,
+        target_date: Optional[str] = None,
+        lead_weeks: Optional[int] = None,
+        comment: Optional[str] = None,
+    ) -> str:
+        milestone_id = _new_id()
+        self.conn.execute(
+            "INSERT INTO milestones (id, subject_id, name, target_date, lead_weeks, comment) VALUES (?, ?, ?, ?, ?, ?)",
+            (milestone_id, subject_id, name, target_date, lead_weeks, comment),
+        )
+        self.conn.commit()
+        return milestone_id
+
+    def get_milestone(self, milestone_id: str) -> Optional[Milestone]:
+        row = self.conn.execute(
+            "SELECT * FROM milestones WHERE id = ? AND deleted_at IS NULL", (milestone_id,)
+        ).fetchone()
+        return Milestone.from_row(row) if row else None
+
+    def list_milestones(self, subject_id: str) -> List[Milestone]:
+        rows = self.conn.execute(
+            """SELECT * FROM milestones WHERE subject_id = ? AND deleted_at IS NULL
+               ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'completed' THEN 1 ELSE 2 END,
+                        target_date ASC NULLS LAST""",
+            (subject_id,),
+        ).fetchall()
+        return [Milestone.from_row(row) for row in rows]
+
+    def update_milestone(
+        self,
+        milestone_id: str,
+        name: str = _SENTINEL,
+        target_date: str = _SENTINEL,
+        lead_weeks: int = _SENTINEL,
+        comment: str = _SENTINEL,
+    ) -> None:
+        updates = []
+        params = []
+        if name is not _SENTINEL:
+            updates.append("name = ?")
+            params.append(name)
+        if target_date is not _SENTINEL:
+            updates.append("target_date = ?")
+            params.append(target_date)
+        if lead_weeks is not _SENTINEL:
+            updates.append("lead_weeks = ?")
+            params.append(lead_weeks)
+        if comment is not _SENTINEL:
+            updates.append("comment = ?")
+            params.append(comment)
+        if updates:
+            params.append(milestone_id)
+            self.conn.execute(
+                f"UPDATE milestones SET {', '.join(updates)} WHERE id = ?", params
+            )
+            self.conn.commit()
+
+    def update_milestone_status(self, milestone_id: str, status: str) -> None:
+        completed_at = self._now() if status == "completed" else None
+        self.conn.execute(
+            "UPDATE milestones SET status = ?, completed_at = ? WHERE id = ?",
+            (status, completed_at, milestone_id),
+        )
+        self.conn.commit()
+
+    def soft_delete_milestone(self, milestone_id: str) -> None:
+        now = self._now()
+        self.conn.execute(
+            "UPDATE milestones SET deleted_at = ? WHERE id = ?", (now, milestone_id)
+        )
+        # Unlink tasks and follow-ups
+        self.conn.execute(
+            "UPDATE tasks SET milestone_id = NULL WHERE milestone_id = ?", (milestone_id,)
+        )
+        self.conn.execute(
+            "UPDATE follow_ups SET milestone_id = NULL WHERE milestone_id = ?", (milestone_id,)
+        )
+        self.conn.commit()
+
+    def link_task_to_milestone(self, task_id: str, milestone_id: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE tasks SET milestone_id = ? WHERE id = ?", (milestone_id, task_id)
+        )
+        self.conn.commit()
+
+    def link_follow_up_to_milestone(self, follow_up_id: str, milestone_id: Optional[str]) -> None:
+        self.conn.execute(
+            "UPDATE follow_ups SET milestone_id = ? WHERE id = ?", (milestone_id, follow_up_id)
+        )
+        self.conn.commit()
+
+    def list_milestone_tasks(self, milestone_id: str) -> List[Task]:
+        rows = self.conn.execute(
+            """SELECT * FROM tasks WHERE milestone_id = ? AND deleted_at IS NULL
+               ORDER BY CASE status WHEN 'todo' THEN 0 WHEN 'in-progress' THEN 1
+                        WHEN 'blocked' THEN 2 ELSE 3 END,
+                        CASE priority WHEN 'must' THEN 0 WHEN 'should' THEN 1 ELSE 2 END""",
+            (milestone_id,),
+        ).fetchall()
+        return [Task.from_row(row) for row in rows]
+
+    def list_milestone_follow_ups(self, milestone_id: str) -> List[FollowUp]:
+        rows = self.conn.execute(
+            """SELECT * FROM follow_ups WHERE milestone_id = ? AND deleted_at IS NULL
+               ORDER BY CASE status WHEN 'waiting' THEN 0 WHEN 'overdue' THEN 1 ELSE 2 END,
+                        due_by ASC NULLS LAST""",
+            (milestone_id,),
+        ).fetchall()
+        return [FollowUp.from_row(row) for row in rows]
+
+    def list_all_active_milestones(self) -> List[Milestone]:
+        """Return all active milestones with target_date across all subjects."""
+        rows = self.conn.execute(
+            """SELECT m.*, s.name AS subject_name
+               FROM milestones m JOIN subjects s ON m.subject_id = s.id
+               WHERE m.status = 'active' AND m.target_date IS NOT NULL
+               AND m.deleted_at IS NULL AND s.deleted_at IS NULL
+               ORDER BY m.target_date ASC""",
+        ).fetchall()
+        return [Milestone.from_row(row) for row in rows]
 
     # ------------------------------------------------------------------
     # Open Point CRUD

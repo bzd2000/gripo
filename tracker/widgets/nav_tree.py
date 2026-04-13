@@ -44,17 +44,20 @@ class NavTree(Tree):
 
     BINDINGS = [
         Binding("p", "toggle_pin", "Toggle pin"),
+        Binding("e", "edit_subject", "Edit"),
         Binding("x", "archive_subject", "Archive"),
         Binding("a", "add", "Add"),
         Binding("A", "toggle_archived", "Toggle archived"),
     ]
 
     def __init__(self, db: Database) -> None:
-        super().__init__("Tracker")
+        super().__init__("Overview")
         self._db = db
         self._show_archived = False
         # Track expanded state: set of label strings for expanded nodes
         self._expanded_paths: set[str] = set()
+        self.show_root = True
+        self.auto_expand = False
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -72,19 +75,15 @@ class NavTree(Tree):
         self.clear()
         root = self.root
         root.expand()
+        root.allow_expand = False
 
-        # Today node
+        # Root is the overview node
         today_count = self._count_today_non_done()
-        today_node = root.add(
-            f"Today ({today_count})",
-            data={"type": "today", "id": "today", "subject_id": None},
-        )
-
-        # This Week node
-        root.add(
-            "This Week",
-            data={"type": "week", "id": "week", "subject_id": None},
-        )
+        week_tasks = self._db.list_week_tasks()
+        week_fus = self._db.list_week_follow_ups()
+        week_count = len(week_tasks) + len(week_fus)
+        root.set_label(f"Overview ({today_count} today, {week_count} week)")
+        root.data = {"type": "overview", "id": "overview", "subject_id": None}
 
         # Subjects
         subjects = self._db.list_subjects(include_archived=self._show_archived)
@@ -122,7 +121,8 @@ class NavTree(Tree):
 
     def _count_today_non_done(self) -> int:
         tasks = self._db.list_today_tasks()
-        return len([t for t in tasks if t.status != "done"])
+        follow_ups = self._db.list_today_follow_ups()
+        return len([t for t in tasks if t.status != "done"]) + len(follow_ups)
 
     def _add_subject_children(self, subject_node: TreeNode, subject_id: str) -> None:
         """Add section children (Tasks, Open Points, Follow-Ups, Notes) under a subject."""
@@ -189,6 +189,27 @@ class NavTree(Tree):
                 },
             )
 
+        milestones = self._db.list_milestones(subject_id)
+        ms_active_count = len([m for m in milestones if m.status == "active"])
+        ms_section = subject_node.add(
+            f"Milestones ({ms_active_count})",
+            data={
+                "type": "milestones_section",
+                "id": f"milestones_{subject_id}",
+                "subject_id": subject_id,
+            },
+        )
+        for ms in milestones:
+            icon = "◎" if ms.status == "active" else ("✓" if ms.status == "completed" else "✗")
+            ms_section.add_leaf(
+                f"{icon} {_truncate(ms.name)}",
+                data={
+                    "type": "milestone",
+                    "id": ms.id,
+                    "subject_id": subject_id,
+                },
+            )
+
         notes = self._db.list_notes(subject_id)
         notes_section = subject_node.add(
             f"Notes ({len(notes)})",
@@ -238,6 +259,70 @@ class NavTree(Tree):
                 return True
         return False
 
+    def reveal_content(self, content_type: str, data: dict) -> None:
+        """Expand tree and select the relevant node for a content request."""
+        subject_id = data.get("subject_id")
+        if not subject_id:
+            return
+
+        item_id = (
+            data.get("task_id") or data.get("point_id")
+            or data.get("follow_up_id") or data.get("note_id")
+            or data.get("milestone_id")
+        )
+
+        for child in self.root.children:
+            if child.data and child.data.get("type") == "subject" and child.data.get("id") == subject_id:
+                child.expand()
+                if item_id:
+                    # Expand all sections so leaves exist, then defer cursor move
+                    for section in child.children:
+                        section.expand()
+                    self.set_timer(0.1, lambda: self._deferred_select(item_id))
+                else:
+                    self.move_cursor(child)
+                break
+
+    def reveal_section(self, content_type: str, data: dict) -> None:
+        """Select the section node matching a list content type."""
+        subject_id = data.get("subject_id")
+        if not subject_id:
+            return
+
+        section_type_map = {
+            "task_list": "task_section",
+            "open_points_list": "open_points_section",
+            "follow_ups_list": "follow_ups_section",
+            "notes_list": "notes_section",
+            "milestone_list": "milestones_section",
+        }
+        target_type = section_type_map.get(content_type)
+        if not target_type:
+            return
+
+        for child in self.root.children:
+            if child.data and child.data.get("type") == "subject" and child.data.get("id") == subject_id:
+                child.expand()
+                for section in child.children:
+                    if section.data and section.data.get("type") == target_type:
+                        self.move_cursor(section)
+                        return
+                break
+
+    def _deferred_select(self, item_id: str) -> None:
+        """Select a node by item id after tree has laid out."""
+        self._find_and_select(self.root, item_id)
+
+    def _find_and_select(self, node: TreeNode, item_id: str) -> bool:
+        if node.data and node.data.get("id") == item_id:
+            self.move_cursor(node)
+            self.scroll_to_node(node)
+            return True
+        for child in node.children:
+            if self._find_and_select(child, item_id):
+                return True
+        return False
+
     def _current_subject_id(self) -> Optional[str]:
         """Return subject_id from the currently selected node, if applicable."""
         node = self.cursor_node
@@ -257,10 +342,8 @@ class NavTree(Tree):
         data = node.data
         node_type = data.get("type")
 
-        if node_type == "today":
-            self.post_message(ShowContent("today", {}))
-        elif node_type == "week":
-            self.post_message(ShowContent("week", {}))
+        if node_type == "overview":
+            self.post_message(ShowContent("overview", {}))
         elif node_type == "subject":
             self.post_message(
                 ShowContent("subject_overview", {"subject_id": data["subject_id"]})
@@ -309,6 +392,17 @@ class NavTree(Tree):
                     {"subject_id": data["subject_id"], "note_id": data["id"]},
                 )
             )
+        elif node_type == "milestones_section":
+            self.post_message(
+                ShowContent("milestone_list", {"subject_id": data["subject_id"]})
+            )
+        elif node_type == "milestone":
+            self.post_message(
+                ShowContent(
+                    "milestone_view",
+                    {"subject_id": data["subject_id"], "milestone_id": data["id"]},
+                )
+            )
 
     # ------------------------------------------------------------------
     # Actions (key bindings)
@@ -323,6 +417,14 @@ class NavTree(Tree):
             self._db.toggle_pin(subject_id)
             self.post_message(DataChanged())
             self.refresh_tree()
+
+    def action_edit_subject(self) -> None:
+        subject_id = self._current_subject_id()
+        if not subject_id:
+            return
+        node = self.cursor_node
+        if node and node.data and node.data.get("type") == "subject":
+            self.post_message(ShowContent("subject_form", {"subject_id": subject_id}))
 
     def action_archive_subject(self) -> None:
         subject_id = self._current_subject_id()
@@ -359,6 +461,8 @@ class NavTree(Tree):
             self.post_message(ShowContent("follow_up_form", {"subject_id": subject_id}))
         elif node_type == "notes_section":
             self.post_message(ShowContent("note_editor", {"subject_id": subject_id}))
+        elif node_type == "milestones_section":
+            self.post_message(ShowContent("milestone_form", {"subject_id": subject_id}))
         # On a leaf item → add same type as sibling
         elif node_type == "task":
             self.post_message(ShowContent("task_form", {"subject_id": subject_id}))
@@ -368,6 +472,8 @@ class NavTree(Tree):
             self.post_message(ShowContent("follow_up_form", {"subject_id": subject_id}))
         elif node_type == "note":
             self.post_message(ShowContent("note_editor", {"subject_id": subject_id}))
+        elif node_type == "milestone":
+            self.post_message(ShowContent("milestone_form", {"subject_id": subject_id}))
         # On a subject node → add subject
         elif node_type == "subject":
             self.post_message(ShowContent("subject_form", {}))

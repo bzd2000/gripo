@@ -6,12 +6,12 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
-from textual.widget import Widget
-from textual.widgets import Input, Label, TextArea
+from textual.containers import Container
+from textual.widgets import Input, Label
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
+from tracker.widgets.comment_editor import CommentEditor
 
 
 class OpenPointForm(Container):
@@ -44,21 +44,16 @@ class OpenPointForm(Container):
         initial_resolved_note = self._point.resolved_note or "" if self._point else ""
         is_resolved = self._point.status == "resolved" if self._point else False
 
-        with Vertical(classes="item-form-fields"):
-            yield Label(title, classes="form-title")
-            with Horizontal(classes="form-row"):
-                with Vertical():
-                    yield Label("Text", classes="field-label")
-                    yield Input(value=initial_text, placeholder="Open point text", id="op-text-input")
-                with Vertical():
-                    yield Label("Context", classes="field-label")
-                    yield Input(value=initial_context, placeholder="Context (optional)", id="op-context-input")
+        with Container(classes="item-form-fields"):
+            yield Label(title, classes="overview-col-header")
+            yield Label("Text", classes="field-label")
+            yield Input(value=initial_text, placeholder="Open point text", id="op-text-input")
+            yield Label("Context", classes="field-label")
+            yield Input(value=initial_context, placeholder="Context (optional)", id="op-context-input")
             if is_resolved:
                 yield Label("Resolution note", classes="field-label")
                 yield Input(value=initial_resolved_note, placeholder="Resolution note", id="op-resolved-note-input")
-        with Container(classes="item-form-comment"):
-            yield Label("Comment", classes="field-label")
-            yield TextArea(text=initial_comment, language="markdown", id="op-comment-area")
+        yield CommentEditor(text=initial_comment, id="op-comment-editor")
 
     def on_mount(self) -> None:
         self.query_one("#op-text-input", Input).focus()
@@ -74,7 +69,7 @@ class OpenPointForm(Container):
             return
 
         context = self.query_one("#op-context-input", Input).value.strip() or None
-        comment = self.query_one("#op-comment-area", TextArea).text.strip() or None
+        comment = self.query_one("#op-comment-editor", CommentEditor).text.strip() or None
 
         if self._point_id:
             self._db.update_open_point_text(self._point_id, text)

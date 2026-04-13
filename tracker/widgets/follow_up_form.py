@@ -6,12 +6,12 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
-from textual.widget import Widget
-from textual.widgets import Input, Label, TextArea
+from textual.containers import Container
+from textual.widgets import Input, Label, Select, TextArea
 
 from tracker.db import Database
 from tracker.messages import ContentCancelled, ContentSaved, DataChanged
+from tracker.widgets.comment_editor import CommentEditor
 from tracker.widgets.date_input import DateInput
 
 
@@ -28,12 +28,14 @@ class FollowUpForm(Container):
         db: Database,
         subject_id: str,
         follow_up_id: Optional[str] = None,
+        milestone_id: Optional[str] = None,
     ) -> None:
         super().__init__(classes="item-form")
         self._db = db
         self._subject_id = subject_id
         self._follow_up_id = follow_up_id
         self._follow_up = db.get_follow_up(follow_up_id) if follow_up_id else None
+        self._default_milestone_id = milestone_id
 
     def compose(self) -> ComposeResult:
         fu = self._follow_up
@@ -52,27 +54,32 @@ class FollowUpForm(Container):
             initial_due_by = None
             initial_asked_on = None
 
-        with Vertical(classes="item-form-fields"):
-            yield Label(title, classes="form-title")
-            with Horizontal(classes="form-row"):
-                with Vertical():
-                    yield Label("What", classes="field-label")
-                    yield Input(value=initial_text, placeholder="What are you waiting for?", id="fu-text-input")
-                with Vertical():
-                    yield Label("Owner", classes="field-label")
-                    yield Input(value=initial_owner, placeholder="Who?", id="fu-owner-input")
-            with Horizontal(classes="form-row"):
-                with Vertical():
-                    yield Label("Due by", classes="field-label")
-                    yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
-                with Vertical():
-                    yield Label("Asked on", classes="field-label")
-                    yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
+        with Container(classes="item-form-fields"):
+            yield Label(title, classes="overview-col-header")
+            yield Label("What", classes="field-label")
+            yield Input(value=initial_text, placeholder="What are you waiting for?", id="fu-text-input")
+            yield Label("Owner", classes="field-label")
+            yield Input(value=initial_owner, placeholder="Who?", id="fu-owner-input")
+            yield Label("Due by", classes="field-label")
+            yield DateInput(value=initial_due_by, placeholder="YYYY-MM-DD", id="fu-due-by-input")
+            yield Label("Asked on", classes="field-label")
+            yield DateInput(value=initial_asked_on, placeholder="YYYY-MM-DD", id="fu-asked-on-input")
             yield Label("Notes", classes="field-label")
             yield TextArea(text=initial_notes, id="fu-notes-area")
-        with Container(classes="item-form-comment"):
-            yield Label("Comment", classes="field-label")
-            yield TextArea(text=initial_comment, language="markdown", id="fu-comment-area")
+            # Milestone link
+            milestones = self._db.list_milestones(self._subject_id)
+            active_ms = [(m.name, m.id) for m in milestones if m.status == "active"]
+            if active_ms:
+                current_ms_id = self._follow_up.milestone_id if self._follow_up else self._default_milestone_id
+                yield Label("Milestone", classes="field-label")
+                yield Select(
+                    options=active_ms,
+                    value=current_ms_id if current_ms_id else Select.NULL,
+                    allow_blank=True,
+                    id="fu-milestone-select",
+                    compact=True,
+                )
+        yield CommentEditor(text=initial_comment or "", id="fu-comment-editor")
 
     def on_mount(self) -> None:
         self.query_one("#fu-text-input", Input).focus()
@@ -94,12 +101,21 @@ class FollowUpForm(Container):
 
         due_by = self.query_one("#fu-due-by-input", DateInput).date_value
         notes = self.query_one("#fu-notes-area", TextArea).text.strip() or None
-        comment = self.query_one("#fu-comment-area", TextArea).text.strip() or None
+        comment = self.query_one("#fu-comment-editor", CommentEditor).text.strip() or None
+
+        # Milestone link (optional)
+        milestone_id = None
+        try:
+            ms_select = self.query_one("#fu-milestone-select", Select)
+            milestone_id = str(ms_select.value) if ms_select.value != Select.NULL else None
+        except Exception:
+            pass
 
         if self._follow_up_id:
             self._db.update_follow_up(self._follow_up_id, text=text, owner=owner, due_by=due_by)
             self._db.update_follow_up_notes(self._follow_up_id, notes)
             self._db.update_follow_up_comment(self._follow_up_id, comment)
+            self._db.link_follow_up_to_milestone(self._follow_up_id, milestone_id)
             saved_id = self._follow_up_id
         else:
             saved_id = self._db.add_follow_up(
@@ -107,9 +123,14 @@ class FollowUpForm(Container):
             )
             if notes:
                 self._db.update_follow_up_notes(saved_id, notes)
+            if milestone_id:
+                self._db.link_follow_up_to_milestone(saved_id, milestone_id)
 
         self.post_message(DataChanged())
-        self.post_message(ContentSaved("follow_up_form", {"subject_id": self._subject_id, "follow_up_id": saved_id}))
+        saved_data = {"subject_id": self._subject_id, "follow_up_id": saved_id}
+        if milestone_id:
+            saved_data["milestone_id"] = milestone_id
+        self.post_message(ContentSaved("follow_up_form", saved_data))
 
     def action_cancel(self) -> None:
         self.post_message(ContentCancelled())

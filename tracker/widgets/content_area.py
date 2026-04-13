@@ -26,6 +26,7 @@ class ContentArea(Container):
         """Replace current content with the given widget."""
         self.remove_children()
         self.mount(widget)
+        widget.focus()
 
     # ------------------------------------------------------------------
     # Message handlers
@@ -56,21 +57,13 @@ class ContentArea(Container):
         """Instantiate the widget matching content_type."""
         subject_id = data.get("subject_id")
 
-        if content_type == "today":
-            from tracker.widgets.today_view import TodayView
-            return TodayView(self._db)
-
-        elif content_type == "week":
-            from tracker.widgets.week_view import WeekView
-            return WeekView(self._db)
+        if content_type in ("today", "week", "overview"):
+            from tracker.widgets.overview_view import OverviewView
+            return OverviewView(self._db)
 
         elif content_type == "subject_overview":
-            try:
-                from tracker.widgets.subject_overview import SubjectOverview
-                return SubjectOverview(self._db, subject_id)
-            except ImportError:
-                from textual.widgets import Label
-                return Label(f"Subject overview for {subject_id}")
+            from tracker.widgets.overview_view import OverviewView
+            return OverviewView(self._db, subject_id=subject_id)
 
         elif content_type == "task_list":
             from tracker.widgets.task_list import TaskList
@@ -80,7 +73,8 @@ class ContentArea(Container):
             try:
                 from tracker.widgets.task_form import TaskForm
                 task_id = data.get("task_id")
-                return TaskForm(self._db, subject_id, task_id)
+                milestone_id = data.get("milestone_id")
+                return TaskForm(self._db, subject_id, task_id, milestone_id=milestone_id)
             except ImportError:
                 from textual.widgets import Label
                 return Label(f"Task form (subject={subject_id})")
@@ -106,7 +100,8 @@ class ContentArea(Container):
             try:
                 from tracker.widgets.follow_up_form import FollowUpForm
                 follow_up_id = data.get("follow_up_id")
-                return FollowUpForm(self._db, subject_id, follow_up_id)
+                milestone_id = data.get("milestone_id")
+                return FollowUpForm(self._db, subject_id, follow_up_id, milestone_id=milestone_id)
             except ImportError:
                 from textual.widgets import Label
                 return Label(f"Follow-up form (subject={subject_id})")
@@ -127,10 +122,24 @@ class ContentArea(Container):
         elif content_type == "subject_form":
             try:
                 from tracker.widgets.subject_form import SubjectForm
-                return SubjectForm(self._db)
+                return SubjectForm(self._db, subject_id=data.get("subject_id"))
             except ImportError:
                 from textual.widgets import Label
                 return Label("Subject form")
+
+        elif content_type == "milestone_list":
+            from tracker.widgets.milestone_list import MilestoneList
+            return MilestoneList(self._db, subject_id)
+
+        elif content_type == "milestone_form":
+            from tracker.widgets.milestone_form import MilestoneForm
+            milestone_id = data.get("milestone_id")
+            return MilestoneForm(self._db, subject_id, milestone_id)
+
+        elif content_type == "milestone_view":
+            from tracker.widgets.milestone_view import MilestoneView
+            milestone_id = data.get("milestone_id")
+            return MilestoneView(self._db, subject_id, milestone_id)
 
         return None
 
@@ -142,13 +151,29 @@ class ContentArea(Container):
         """Navigate back to the appropriate parent list after save/cancel."""
         subject_id = data.get("subject_id")
 
+        milestone_id = data.get("milestone_id")
+
         parent_mapping = {
-            "task_form": ("task_list", {"subject_id": subject_id}),
+            # Forms → parent list (or milestone view if created from milestone)
+            "task_form": ("milestone_view", {"subject_id": subject_id, "milestone_id": milestone_id}) if milestone_id else ("task_list", {"subject_id": subject_id}),
             "open_point_form": ("open_points_list", {"subject_id": subject_id}),
-            "follow_up_form": ("follow_ups_list", {"subject_id": subject_id}),
+            "follow_up_form": ("milestone_view", {"subject_id": subject_id, "milestone_id": milestone_id}) if milestone_id else ("follow_ups_list", {"subject_id": subject_id}),
             "note_editor": ("notes_list", {"subject_id": subject_id}),
-            "subject_form": ("today", {}),
+            "subject_form": ("subject_overview", {"subject_id": subject_id}) if subject_id else ("overview", {}),
+            "milestone_form": ("milestone_view", {"subject_id": subject_id, "milestone_id": data.get("milestone_id")}) if data.get("milestone_id") else ("milestone_list", {"subject_id": subject_id}),
+            # Lists → subject overview
+            "task_list": ("subject_overview", {"subject_id": subject_id}),
+            "open_points_list": ("subject_overview", {"subject_id": subject_id}),
+            "follow_ups_list": ("subject_overview", {"subject_id": subject_id}),
+            "notes_list": ("subject_overview", {"subject_id": subject_id}),
+            "milestone_list": ("subject_overview", {"subject_id": subject_id}),
+            # Milestone view → milestone list
+            "milestone_view": ("milestone_list", {"subject_id": subject_id}),
+            # Subject overview → overview
+            "subject_overview": ("overview", {}),
         }
+
+        from tracker.widgets.nav_tree import NavTree
 
         if content_type in parent_mapping:
             parent_type, parent_data = parent_mapping[content_type]
@@ -157,3 +182,24 @@ class ContentArea(Container):
                 self._current_content_type = parent_type
                 self._current_data = parent_data
                 self.show(widget)
+                # Update tree cursor to match
+                try:
+                    nav = self.app.query_one(NavTree)
+                    if parent_type == "overview":
+                        nav.move_cursor(nav.root)
+                    elif parent_type == "subject_overview":
+                        nav.reveal_content(parent_type, parent_data)
+                    elif parent_type in ("task_list", "open_points_list", "follow_ups_list",
+                                         "notes_list", "milestone_list"):
+                        # Select the section node in the tree
+                        nav.reveal_section(parent_type, parent_data)
+                except Exception:
+                    pass
+        else:
+            # No parent — focus the tree
+            try:
+                nav = self.app.query_one(NavTree)
+                nav.move_cursor(nav.root)
+                nav.focus()
+            except Exception:
+                pass

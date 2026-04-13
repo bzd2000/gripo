@@ -15,6 +15,7 @@ _TYPE_ICON = {
     "note": "📝",
     "open_point": "?",
     "follow_up": "⏳",
+    "milestone": "◎",
 }
 
 _TYPE_LABEL = {
@@ -23,6 +24,7 @@ _TYPE_LABEL = {
     "note": "note",
     "open_point": "open point",
     "follow_up": "follow-up",
+    "milestone": "milestone",
 }
 
 _MIN_CHARS = 2
@@ -55,6 +57,13 @@ class SearchScreen(ModalScreen):
 
     def on_mount(self) -> None:
         self.query_one("#search-input", Input).focus()
+
+    def on_descendant_focus(self, event) -> None:
+        """Auto-select first result when ListView gets focus."""
+        list_view = self.query_one("#search-results", ListView)
+        if event.widget is list_view or list_view.has_focus:
+            if list_view.index is None and len(list_view.children) > 0:
+                list_view.index = 0
 
     def on_input_changed(self, event: Input.Changed) -> None:
         query = event.value.strip()

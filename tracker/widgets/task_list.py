@@ -5,7 +5,7 @@ from __future__ import annotations
 from textual.widgets import Label, ListItem, ListView
 
 from tracker.db import Database
-from tracker.messages import DataChanged, ShowContent
+from tracker.messages import ContentCancelled, DataChanged, ShowContent
 from tracker.models import Task
 from tracker.screens.confirm import ConfirmScreen
 
@@ -67,6 +67,7 @@ class TaskList(ListView):
         ("t", "toggle_today", "Toggle today"),
         ("w", "cycle_day", "Cycle day"),
         ("x", "delete_task", "Delete task"),
+        ("escape", "back", "Back"),
     ]
 
     def __init__(self, db: Database, subject_id: str) -> None:
@@ -110,6 +111,11 @@ class TaskList(ListView):
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        task_id = getattr(event.item, "_task_id", None)
+        if task_id:
+            self.post_message(ShowContent(content_type="task_form", data={"subject_id": self._subject_id, "task_id": task_id}))
 
     def action_add_task(self) -> None:
         self.post_message(ShowContent(content_type="task_form", data={"subject_id": self._subject_id}))
@@ -197,3 +203,6 @@ class TaskList(ListView):
                 self.notify("Task deleted")
 
         self.app.push_screen(ConfirmScreen("Delete this task?"), _on_confirm)
+
+    def action_back(self) -> None:
+        self.post_message(ContentCancelled())

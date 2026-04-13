@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Container
 from textual.widgets import Footer, Header
 
@@ -26,7 +27,7 @@ class TrackerApp(App):
         ("q", "quit", "Quit"),
         ("/", "search", "Search"),
         ("question_mark", "help", "Help"),
-        ("ctrl+w", "focus_tree", "Focus tree"),
+        Binding("ctrl+w", "focus_tree", "Focus tree", priority=True),
     ]
 
     def __init__(self, db_path: Path = _DB_PATH) -> None:
@@ -51,15 +52,13 @@ class TrackerApp(App):
             pass
         # Show Today view initially
         self.query_one(ContentArea).on_show_content(
-            ShowContent(content_type="today", data={})
+            ShowContent(content_type="overview", data={})
         )
 
     def on_show_content(self, message: ShowContent) -> None:
-        """Forward ShowContent to ContentArea (for messages that bubble past it)."""
-        try:
-            self.query_one(ContentArea).on_show_content(message)
-        except Exception:
-            pass
+        """Forward ShowContent to ContentArea and reveal in tree."""
+        self.query_one(ContentArea).on_show_content(message)
+        self.query_one(NavTree).reveal_content(message.content_type, message.data)
 
     def on_data_changed(self, message: DataChanged) -> None:
         """Refresh the nav tree when data changes."""
@@ -92,6 +91,8 @@ class TrackerApp(App):
                 self.post_message(ShowContent(content_type="open_point_form", data={"subject_id": result["subject_id"], "point_id": result["id"]}))
             elif result["type"] == "follow_up":
                 self.post_message(ShowContent(content_type="follow_up_form", data={"subject_id": result["subject_id"], "follow_up_id": result["id"]}))
+            elif result["type"] == "milestone":
+                self.post_message(ShowContent(content_type="milestone_view", data={"subject_id": result["subject_id"], "milestone_id": result["id"]}))
 
         self.push_screen(SearchScreen(self.db), _on_result)
 
