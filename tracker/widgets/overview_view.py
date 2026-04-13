@@ -17,10 +17,10 @@ from tracker.messages import ContentCancelled, DataChanged, ShowContent
 from tracker.constants import (
     DAYS,
     DAY_LABELS,
-    FUTASK_STATUS_ICON,
+    FU_STATUS_ICON,
     PRIORITY_CYCLE,
     STATUS_CYCLE,
-    TASKTASK_STATUS_ICON,
+    TASK_STATUS_ICON,
 )
 from tracker.models import FollowUp, Milestone, Task
 
@@ -37,7 +37,7 @@ def _short_task_label(task: Task) -> str:
 
 
 def _follow_up_label(fu: FollowUp, show_subject: bool = False) -> str:
-    icon = _FUTASK_STATUS_ICON.get(fu.status, "?")
+    icon = FU_STATUS_ICON.get(fu.status, "?")
     subject = f" [{fu.subject_name}]" if show_subject and fu.subject_name else ""
     return f"{icon} {fu.text} — {fu.owner}{subject}"
 
@@ -328,7 +328,7 @@ class OverviewView(Container, can_focus=True):
                     )
                     dl.append(_make_item(task.id, task.subject_id, "task", label))
                 for fu in day_fus:
-                    icon = _FUTASK_STATUS_ICON.get(fu.status, "?")
+                    icon = FU_STATUS_ICON.get(fu.status, "?")
                     label = Label(f"{icon} {fu.text}")
                     dl.append(_make_item(fu.id, fu.subject_id, "follow_up", label))
 

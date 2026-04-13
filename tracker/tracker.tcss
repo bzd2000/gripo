@@ -297,6 +297,25 @@ MilestoneView {
     text-style: italic;
 }
 
+/* ── DateInput: day prefix + input field ──────────────────────────── */
+
+DateInput {
+    layout: horizontal;
+    height: auto;
+}
+
+DateInput #date-prefix {
+    width: 4;
+    height: 3;
+    content-align: center middle;
+    color: #00aa33;
+    text-style: bold;
+}
+
+DateInput #date-field {
+    width: 1fr;
+}
+
 /* ── Item forms: 2 columns (fields | comment) ─────────────────────── */
 
 .item-form {

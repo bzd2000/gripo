@@ -7,22 +7,20 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
-from tracker.widgets.date_input import DateInput
+from tracker.widgets.date_input import _DateField
 
 
 # ---------------------------------------------------------------------------
 # Helper — test logic without running a Textual app
 # ---------------------------------------------------------------------------
 
-class _DateInputStub(DateInput):
+class _DateFieldStub(_DateField):
     """Subclass that replaces Textual's __init__ and value reactive with simple attrs."""
 
     def __init__(self, value: str | None = None) -> None:
-        # Bypass all of Textual's widget initialisation
         initial = value if value is not None else date.today().isoformat()
         self._stub_value: str = initial
 
-    # Override value as a plain property so our logic methods work
     @property  # type: ignore[override]
     def value(self) -> str:
         return self._stub_value
@@ -31,9 +29,13 @@ class _DateInputStub(DateInput):
     def value(self, v: str) -> None:
         self._stub_value = v
 
+    @property
+    def date_value(self):
+        return self._parse_date(self.value)
 
-def _w(value: str | None = None) -> _DateInputStub:
-    return _DateInputStub(value)
+
+def _w(value: str | None = None) -> _DateFieldStub:
+    return _DateFieldStub(value)
 
 
 # ---------------------------------------------------------------------------
@@ -41,19 +43,19 @@ def _w(value: str | None = None) -> _DateInputStub:
 # ---------------------------------------------------------------------------
 
 def test_parse_date_valid() -> None:
-    assert DateInput._parse_date("2026-04-01") == "2026-04-01"
+    assert _DateField._parse_date("2026-04-01") == "2026-04-01"
 
 
 def test_parse_date_strips_whitespace() -> None:
-    assert DateInput._parse_date("  2026-04-01  ") == "2026-04-01"
+    assert _DateField._parse_date("  2026-04-01  ") == "2026-04-01"
 
 
 def test_parse_date_invalid() -> None:
-    assert DateInput._parse_date("not-a-date") is None
+    assert _DateField._parse_date("not-a-date") is None
 
 
 def test_parse_date_empty() -> None:
-    assert DateInput._parse_date("") is None
+    assert _DateField._parse_date("") is None
 
 
 # ---------------------------------------------------------------------------
@@ -62,28 +64,28 @@ def test_parse_date_empty() -> None:
 
 def test_shift_months_normal() -> None:
     d = date(2026, 4, 15)
-    assert DateInput._shift_months(d, 1) == date(2026, 5, 15)
-    assert DateInput._shift_months(d, -1) == date(2026, 3, 15)
+    assert _DateField._shift_months(d, 1) == date(2026, 5, 15)
+    assert _DateField._shift_months(d, -1) == date(2026, 3, 15)
 
 
 def test_shift_months_year_wrap_forward() -> None:
-    assert DateInput._shift_months(date(2026, 12, 15), 1) == date(2027, 1, 15)
+    assert _DateField._shift_months(date(2026, 12, 15), 1) == date(2027, 1, 15)
 
 
 def test_shift_months_year_wrap_backward() -> None:
-    assert DateInput._shift_months(date(2026, 1, 15), -1) == date(2025, 12, 15)
+    assert _DateField._shift_months(date(2026, 1, 15), -1) == date(2025, 12, 15)
 
 
 def test_shift_months_day_clamped_feb_non_leap() -> None:
-    assert DateInput._shift_months(date(2026, 3, 31), -1) == date(2026, 2, 28)
+    assert _DateField._shift_months(date(2026, 3, 31), -1) == date(2026, 2, 28)
 
 
 def test_shift_months_day_clamped_feb_leap() -> None:
-    assert DateInput._shift_months(date(2024, 3, 31), -1) == date(2024, 2, 29)
+    assert _DateField._shift_months(date(2024, 3, 31), -1) == date(2024, 2, 29)
 
 
 def test_shift_months_jan_31_forward_to_feb() -> None:
-    assert DateInput._shift_months(date(2026, 1, 31), 1) == date(2026, 2, 28)
+    assert _DateField._shift_months(date(2026, 1, 31), 1) == date(2026, 2, 28)
 
 
 # ---------------------------------------------------------------------------
