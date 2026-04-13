@@ -58,7 +58,10 @@ class TrackerApp(App):
     def on_show_content(self, message: ShowContent) -> None:
         """Forward ShowContent to ContentArea and reveal in tree."""
         self.query_one(ContentArea).on_show_content(message)
-        self.query_one(NavTree).reveal_content(message.content_type, message.data)
+        nav = self.query_one(NavTree)
+        # Only reveal in tree if the action didn't come from the tree itself
+        if not nav.has_focus:
+            nav.reveal_content(message.content_type, message.data)
 
     def on_data_changed(self, message: DataChanged) -> None:
         """Refresh the nav tree when data changes."""

@@ -17,6 +17,9 @@ class Subject:
     created_at: str
     deleted_at: Optional[str]
 
+    # Optional fields
+    subject_type: Optional[str] = None
+
     # Optional aggregate fields populated by list_subjects()
     open_tasks: int = 0
     open_points_count: int = 0
@@ -34,6 +37,7 @@ class Subject:
             color=row["color"],
             created_at=row["created_at"],
             deleted_at=row["deleted_at"],
+            subject_type=row["subject_type"] if "subject_type" in keys else None,
             open_tasks=row["open_tasks"] if "open_tasks" in keys else 0,
             open_points_count=row["open_points_count"] if "open_points_count" in keys else 0,
             follow_ups_count=row["follow_ups_count"] if "follow_ups_count" in keys else 0,

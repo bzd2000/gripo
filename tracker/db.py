@@ -19,6 +19,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS subjects (
     id            TEXT PRIMARY KEY,
     name          TEXT NOT NULL,
+    subject_type  TEXT CHECK (subject_type IN ('person', 'team', 'board', 'project')),
     pinned        INTEGER NOT NULL DEFAULT 0,
     archived      INTEGER NOT NULL DEFAULT 0,
     color         TEXT,
@@ -149,6 +150,11 @@ class Database:
         if ms_cols and "lead_weeks" not in ms_cols:
             self.conn.execute("ALTER TABLE milestones ADD COLUMN lead_weeks INTEGER")
 
+        # Add subject_type to subjects if missing
+        subj_cols = [r["name"] for r in self.conn.execute("PRAGMA table_info(subjects)").fetchall()]
+        if "subject_type" not in subj_cols:
+            self.conn.execute("ALTER TABLE subjects ADD COLUMN subject_type TEXT CHECK (subject_type IN ('person', 'team', 'board', 'project'))")
+
     # ------------------------------------------------------------------
     # Subject CRUD
     # ------------------------------------------------------------------
@@ -156,13 +162,14 @@ class Database:
     def add_subject(
         self,
         name: str,
+        subject_type: Optional[str] = None,
         color: Optional[str] = None,
         pinned: bool = False,
     ) -> str:
         subject_id = _new_id()
         self.conn.execute(
-            "INSERT INTO subjects (id, name, color, pinned) VALUES (?, ?, ?, ?)",
-            (subject_id, name, color, int(pinned)),
+            "INSERT INTO subjects (id, name, subject_type, color, pinned) VALUES (?, ?, ?, ?, ?)",
+            (subject_id, name, subject_type, color, int(pinned)),
         )
         self.conn.commit()
         return subject_id
@@ -184,6 +191,7 @@ class Database:
             SELECT
                 s.id,
                 s.name,
+                s.subject_type,
                 s.pinned,
                 s.archived,
                 s.color,
@@ -207,14 +215,17 @@ class Database:
             WHERE s.deleted_at IS NULL
             {archived_clause}
             GROUP BY s.id
-            ORDER BY s.pinned DESC, s.name ASC
+            ORDER BY CASE s.subject_type WHEN 'person' THEN 0 WHEN 'team' THEN 1
+                     WHEN 'project' THEN 2 WHEN 'board' THEN 3 ELSE 4 END,
+                     s.pinned DESC, s.name ASC
         """
         rows = self.conn.execute(sql).fetchall()
         return [Subject.from_row(row) for row in rows]
 
-    def rename_subject(self, subject_id: str, name: str) -> None:
+    def update_subject(self, subject_id: str, name: str, subject_type: Optional[str] = None) -> None:
         self.conn.execute(
-            "UPDATE subjects SET name = ? WHERE id = ?", (name, subject_id)
+            "UPDATE subjects SET name = ?, subject_type = ? WHERE id = ?",
+            (name, subject_type, subject_id),
         )
         self.conn.commit()
 

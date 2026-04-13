@@ -85,20 +85,45 @@ class NavTree(Tree):
         root.set_label(f"Overview ({today_count} today, {week_count} week)")
         root.data = {"type": "overview", "id": "overview", "subject_id": None}
 
-        # Subjects
+        # Subjects grouped by type
         subjects = self._db.list_subjects(include_archived=self._show_archived)
+        type_labels = {
+            "person": "People",
+            "team": "Teams",
+            "project": "Projects",
+            "board": "Boards",
+            None: "Other",
+        }
+        type_order = ["person", "team", "project", "board", None]
+
+        # Group subjects by type
+        by_type: dict[str | None, list] = {t: [] for t in type_order}
         for subject in subjects:
-            pin_indicator = " 📌" if subject.pinned else ""
-            archived_indicator = " [archived]" if subject.archived else ""
-            subject_node = root.add(
-                f"{subject.name}{pin_indicator}{archived_indicator}",
-                data={
-                    "type": "subject",
-                    "id": subject.id,
-                    "subject_id": subject.id,
-                },
+            key = subject.subject_type if subject.subject_type in type_labels else None
+            by_type[key].append(subject)
+
+        for stype in type_order:
+            group = by_type[stype]
+            if not group:
+                continue
+            group_label = type_labels[stype]
+            group_node = root.add(
+                group_label,
+                data={"type": "type_group", "id": f"type_{stype}", "subject_id": None},
             )
-            self._add_subject_children(subject_node, subject.id)
+            group_node.expand()
+            for subject in group:
+                pin_indicator = " 📌" if subject.pinned else ""
+                archived_indicator = " [archived]" if subject.archived else ""
+                subject_node = group_node.add(
+                    f"{subject.name}{pin_indicator}{archived_indicator}",
+                    data={
+                        "type": "subject",
+                        "id": subject.id,
+                        "subject_id": subject.id,
+                    },
+                )
+                self._add_subject_children(subject_node, subject.id)
 
     def refresh_tree(self) -> None:
         """Rebuild while preserving expanded state and current selection."""
@@ -271,17 +296,19 @@ class NavTree(Tree):
             or data.get("milestone_id")
         )
 
-        for child in self.root.children:
-            if child.data and child.data.get("type") == "subject" and child.data.get("id") == subject_id:
-                child.expand()
-                if item_id:
-                    # Expand all sections so leaves exist, then defer cursor move
-                    for section in child.children:
-                        section.expand()
-                    self.set_timer(0.1, lambda: self._deferred_select(item_id))
-                else:
-                    self.move_cursor(child)
-                break
+        # Search through type group nodes → subject nodes
+        for group in self.root.children:
+            for child in group.children:
+                if child.data and child.data.get("type") == "subject" and child.data.get("id") == subject_id:
+                    group.expand()
+                    child.expand()
+                    if item_id:
+                        for section in child.children:
+                            section.expand()
+                        self.set_timer(0.1, lambda: self._deferred_select(item_id))
+                    else:
+                        self.move_cursor(child)
+                    return
 
     def reveal_section(self, content_type: str, data: dict) -> None:
         """Select the section node matching a list content type."""
@@ -300,14 +327,16 @@ class NavTree(Tree):
         if not target_type:
             return
 
-        for child in self.root.children:
-            if child.data and child.data.get("type") == "subject" and child.data.get("id") == subject_id:
-                child.expand()
-                for section in child.children:
-                    if section.data and section.data.get("type") == target_type:
-                        self.move_cursor(section)
-                        return
-                break
+        for group in self.root.children:
+            for child in group.children:
+                if child.data and child.data.get("type") == "subject" and child.data.get("id") == subject_id:
+                    group.expand()
+                    child.expand()
+                    for section in child.children:
+                        if section.data and section.data.get("type") == target_type:
+                            self.move_cursor(section)
+                            return
+                    return
 
     def _deferred_select(self, item_id: str) -> None:
         """Select a node by item id after tree has laid out."""
