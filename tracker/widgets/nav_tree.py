@@ -449,10 +449,7 @@ class NavTree(Tree):
 
     def action_edit_subject(self) -> None:
         subject_id = self._current_subject_id()
-        if not subject_id:
-            return
-        node = self.cursor_node
-        if node and node.data and node.data.get("type") == "subject":
+        if subject_id:
             self.post_message(ShowContent("subject_form", {"subject_id": subject_id}))
 
     def action_archive_subject(self) -> None:
